@@ -1,0 +1,82 @@
+HIMACHAL PANCHAYAT ELECTIONS CANDIDATE MANAGEMENT SYSTEM
+========================================================
+
+INSTALLATION STEPS:
+------------------
+
+1. Create a database in MySQL:
+   - Open phpMyAdmin or MySQL command line
+   - Create a new database named 'himachal_panchayat_elections'
+
+2. Import database structure:
+   - Run the database.sql file in your database
+   - This will create all necessary tables
+
+3. Configure the system:
+   - Open config.php
+   - Update database credentials (DB_HOST, DB_USER, DB_PASS)
+   - Add your ChatGPT API key in CHATGPT_API_KEY constant
+   - Create an 'uploads' folder in the project directory with write permissions
+
+4. Seed initial data:
+   - Run seed_data.php from browser or command line
+   - This will add districts, blocks, and panchayats
+
+5. Set up file permissions:
+   - Make sure the 'uploads' directory is writable (chmod 755 or 777)
+
+6. Access the system:
+   - Candidate Entry Form: http://yourdomain.com/index.php
+   - Data Display: http://yourdomain.com/data.php
+
+FEATURES:
+--------
+✓ Complete candidate management system
+✓ Automatic Hindi/English bio generation with ChatGPT
+✓ Photo upload with validation
+✓ Dynamic district/block/panchayat dropdowns
+✓ Support for new panchayat entries
+✓ Search and filter functionality
+✓ Pagination
+✓ Export to CSV
+✓ Responsive design
+✓ Status tracking (contesting, winner, etc.)
+✓ Video links management
+✓ Mobile number privacy protection
+
+FILE STRUCTURE:
+-------------
+├── config.php              # Configuration and database connection
+├── database.sql           # Database structure
+├── index.php              # Candidate entry form
+├── data.php               # Data display with filters
+├── get_blocks.php         # AJAX handler for blocks
+├── get_panchayats.php     # AJAX handler for panchayats
+├── export.php             # CSV export functionality
+├── seed_data.php          # Initial data seeder
+├── uploads/               # Directory for candidate photos
+└── INSTALL.txt            # Installation instructions
+
+SYSTEM REQUIREMENTS:
+-------------------
+- PHP 7.4 or higher
+- MySQL 5.7 or higher
+- mod_rewrite enabled (for future SEO-friendly URLs)
+- cURL extension enabled (for ChatGPT API)
+- GD extension enabled (for image handling)
+
+TROUBLESHOOTING:
+---------------
+1. If photos don't upload:
+   - Check uploads folder permissions
+   - Check PHP upload_max_filesize setting
+
+2. If ChatGPT API fails:
+   - Verify API key in config.php
+   - Check if cURL is enabled
+
+3. If dropdowns don't load:
+   - Check database connection
+   - Verify AJAX endpoints are accessible
+
+For support, contact: your-email@example.com
