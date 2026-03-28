@@ -5,7 +5,7 @@ require_once 'config.php';
 
 // Check if employee is already logged in
 if (isset($_SESSION['employee_logged_in']) && $_SESSION['employee_logged_in'] === true) {
-    header('Location: employee_dashboard.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -32,12 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("UPDATE employees SET last_login = NOW() WHERE id = ?");
         $stmt->execute([$employee['id']]);
         
-        header('Location: employee_dashboard.php');
+        header('Location: dashboard.php');
         exit;
     } else {
         // Check if employee is blocked
         $stmt = $pdo->prepare("SELECT status FROM employees WHERE username = ?");
-        $stmt->execute([$username]);
+        $stmt->execute([    $username]);
         $status = $stmt->fetch();
         
         if ($status && $status['status'] === 'blocked') {

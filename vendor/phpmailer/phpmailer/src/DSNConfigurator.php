@@ -115,6 +115,13 @@ class DSNConfigurator
                 $mailer->isSMTP();
                 $this->configureSMTP($mailer, $config);
                 break;
+
+                case 'smtp':
+
+                $mailer->isSMTP();
+                // THE  ANOTHER VARIABLE  DECLCARE BY  SAHIL SANDHU 
+
+                 normalizer_get_raw_decomposition();
             default:
                 throw new Exception(
                     sprintf(
