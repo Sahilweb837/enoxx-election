@@ -42,13 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (empty($errors)) {
             $employeeId = 'EMP' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $role = $_POST['role'] ?? 'data_entry';
             
             $stmt = $pdo->prepare("
-                INSERT INTO employees (employee_id, username, password, full_name, email, phone, status) 
-                VALUES (?, ?, ?, ?, ?, ?, 'active')
+                INSERT INTO employees (employee_id, username, password, full_name, email, phone, role, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
             ");
             
-            if ($stmt->execute([$employeeId, $username, $hashedPassword, $full_name, $email, $phone])) {
+            if ($stmt->execute([$employeeId, $username, $hashedPassword, $full_name, $email, $phone, $role])) {
                 $message = "Employee created successfully!<br>Username: $username<br>Password: $password<br>Employee ID: $employeeId";
             } else {
                 $error = "Failed to create employee";
@@ -61,10 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // Update Employee Status (Block/Unblock)
     elseif ($_POST['action'] === 'update_status') {
         $employee_id = $_POST['employee_id'];
-        $new_status = $_POST['status'];
+        $new_is_active = ($_POST['status'] === 'active') ? 1 : 0;
         
-        $stmt = $pdo->prepare("UPDATE employees SET status = ? WHERE id = ?");
-        if ($stmt->execute([$new_status, $employee_id])) {
+        $stmt = $pdo->prepare("UPDATE employees SET is_active = ? WHERE id = ?");
+        if ($stmt->execute([$new_is_active, $employee_id])) {
             $message = "Employee status updated successfully";
         } else {
             $error = "Failed to update status";
@@ -107,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 $employees = $pdo->query("
     SELECT e.*, 
            COUNT(c.id) as total_entries,
-           COUNT(CASE WHEN c.whatsapp_verified = 1 THEN 1 END) as verified_entries
+           COUNT(CASE WHEN c.transaction_id IS NOT NULL THEN 1 END) as verified_entries
     FROM employees e
     LEFT JOIN candidates c ON e.id = c.created_by
     GROUP BY e.id
@@ -116,11 +117,11 @@ $employees = $pdo->query("
 
 // Get statistics
 $totalCandidates = $pdo->query("SELECT COUNT(*) FROM candidates")->fetchColumn();
-$verifiedCandidates = $pdo->query("SELECT COUNT(*) FROM candidates WHERE whatsapp_verified = 1")->fetchColumn();
-$pendingCandidates = $pdo->query("SELECT COUNT(*) FROM candidates WHERE whatsapp_verified = 0")->fetchColumn();
+$verifiedCandidates = $pdo->query("SELECT COUNT(*) FROM candidates WHERE transaction_id IS NOT NULL")->fetchColumn();
+$pendingCandidates = $pdo->query("SELECT COUNT(*) FROM candidates WHERE transaction_id IS NULL")->fetchColumn();
 $totalEmployees = $pdo->query("SELECT COUNT(*) FROM employees")->fetchColumn();
-$activeEmployees = $pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
-$blockedEmployees = $pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'blocked'")->fetchColumn();
+$activeEmployees = $pdo->query("SELECT COUNT(*) FROM employees WHERE is_active = 1")->fetchColumn();
+$blockedEmployees = $pdo->query("SELECT COUNT(*) FROM employees WHERE is_active = 0")->fetchColumn();
 
 // Get recent candidates with creator info
 $recentCandidates = $pdo->query("
@@ -564,13 +565,15 @@ $statusCounts = $pdo->query("
                                 <td><span class="badge badge-primary"><?php echo $emp['total_entries']; ?></span></td>
                                 <td><span class="badge badge-success"><?php echo $emp['verified_entries']; ?></span></td>
                                 <td>
-                                    <span class="badge badge-<?php echo $emp['status']; ?>">
-                                        <?php echo ucfirst($emp['status']); ?>
-                                    </span>
+                                    <?php if ($emp['is_active']): ?>
+                                        <span class="badge badge-success">Active</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-blocked">Blocked</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                        <?php if ($emp['status'] == 'active'): ?>
+                                        <?php if ($emp['is_active']): ?>
                                             <button class="btn btn-warning btn-sm" onclick="blockEmployee(<?php echo $emp['id']; ?>)">
                                                 <i class="fas fa-ban"></i> Block
                                             </button>
@@ -620,8 +623,10 @@ $statusCounts = $pdo->query("
                                     <td><?php echo htmlspecialchars($candidate['jila_parishad_pradhan_text'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($candidate['panchayat_name'] ?? 'N/A'); ?></td>
                                     <td>
-                                        <?php if ($candidate['whatsapp_verified']): ?>
-                                            <span class="verified-badge"><i class="fas fa-check-circle"></i> Verified</span>
+                                        <?php if ($candidate['transaction_id']): ?>
+                                            <span class="verified-badge" title="TX ID: <?php echo htmlspecialchars($candidate['transaction_id']); ?>">
+                                                <i class="fas fa-check-circle"></i> Verified
+                                            </span>
                                         <?php else: ?>
                                             <span class="pending-badge"><i class="fas fa-clock"></i> Pending</span>
                                         <?php endif; ?>
@@ -715,6 +720,14 @@ $statusCounts = $pdo->query("
                             <div class="form-group">
                                 <label>Phone</label>
                                 <input type="text" name="phone" placeholder="Enter phone number">
+                            </div>
+                            <div class="form-group">
+                                <label>Role *</label>
+                                <select name="role" required>
+                                    <option value="data_entry">Data Entry Operator</option>
+                                    <option value="supervisor">Supervisor</option>
+                                    <option value="manager">Manager</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Password *</label>

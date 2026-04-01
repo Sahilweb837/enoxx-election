@@ -1,0 +1,770 @@
+﻿    <?php
+    /**
+     * Enoxx News - Panchayat Election 2026 Portal
+     * Theme: Civitas Aurum — Gold / Warm White
+     */
+    require_once 'config.php';
+
+    // Language handling
+    $available_languages = ['en', 'hi'];
+    $current_language = $_SESSION['language'] ?? $_COOKIE['language'] ?? 'hi';
+    if (isset($_GET['lang']) && in_array($_GET['lang'], $available_languages)) {
+        $current_language = $_GET['lang'];
+        $_SESSION['language'] = $current_language;
+        setcookie('language', $current_language, time() + (86400 * 30), '/');
+    }
+
+    // Multi-language system (Function handled in config.php)
+    function langs_text($hi, $en) {
+        global $current_language;
+        return $current_language === 'hi' && !empty($hi) ? $hi : $en;
+    }
+
+    // Gender text
+    function getGenderText($gender) {
+        global $current_language;
+        if ($current_language === 'hi') {
+            return $gender === 'male' ? 'पुरुष' : ($gender === 'female' ? 'महिला' : 'अन्य');
+        }
+        return ucfirst($gender ?: 'Other');
+    }
+
+    // Status helpers
+    function getStatusText($status) {
+        global $current_language;
+        $map = [
+            'winner'     => ['en' => 'Winner',     'hi' => 'विजेता'],
+            'leading'    => ['en' => 'Leading',    'hi' => 'आगे'],
+            'contesting' => ['en' => 'Contesting', 'hi' => 'प्रत्याशी'],
+            'runner_up'  => ['en' => 'Runner Up',  'hi' => 'उपविजेता'],
+            'withdrawn'  => ['en' => 'Withdrawn',  'hi' => 'अलग'],
+            'verified'   => ['en' => 'Verified',   'hi' => 'सत्यापित'],
+        ];
+        return $map[$status][$current_language] ?? ($map['contesting'][$current_language] ?? 'Contesting');
+    }
+    function getStatusClass($status) {
+        return [
+            'winner'     => 'bg-[#40d399]/20 text-[#006c49]',
+            'leading'    => 'bg-[#d5e0f8] text-[#3c475a]',
+            'contesting' => 'bg-[#ffdf9a] text-[#5a4300]',
+            'runner_up'  => 'bg-[#ece1d1] text-[#817660]',
+            'withdrawn'  => 'bg-[#ffdad6] text-[#93000a]',
+            'verified'   => 'bg-[#40d399]/20 text-[#006c49]',
+        ][$status] ?? 'bg-[#ffdf9a] text-[#5a4300]';
+    }
+
+    // Slug fixer
+    function ensureSlugs($pdo) {
+        foreach (['districts' => 'district_name', 'blocks' => 'block_name', 'panchayats' => 'panchayat_name'] as $t => $f) {
+            $pdo->query("UPDATE $t SET slug = LOWER(REPLACE(REPLACE($f,' ','-'),'&','and')) WHERE slug IS NULL OR slug = ''");
+        }
+    }
+    ensureSlugs($pdo);
+
+    // URL params
+    $district_slug  = $_GET['district']  ?? null;
+    $block_slug     = $_GET['block']     ?? null;
+    $panchayat_slug = $_GET['panchayat'] ?? null;
+    $candidate_slug = $_GET['candidate'] ?? null;
+    $search_query   = $_GET['search']    ?? null;
+
+    // ── Determine current level & fetch items ──────────────────────────────────
+    $view_candidate = null;
+    $items          = [];
+    $current_level  = 'districts';
+    $context_title  = 'Himachal Pradesh';
+
+    if ($candidate_slug) {
+        $s = $pdo->prepare("SELECT c.*, d.district_name, d.district_name_hi, d.slug as district_slug,
+                            b.block_name, b.block_name_hi, b.slug as block_slug,
+                            p.panchayat_name, p.panchayat_name_hi, p.slug as panchayat_slug
+                            FROM candidates c
+                            LEFT JOIN districts d ON c.district_id = d.id
+                            LEFT JOIN blocks b    ON c.block_id = b.id
+                            LEFT JOIN panchayats p ON c.panchayat_id = p.id
+                            WHERE c.slug = ?");
+        $s->execute([$candidate_slug]);
+        $view_candidate = $s->fetch();
+        $current_level  = 'profile';
+        $context_title  = $view_candidate ? lang_text($view_candidate['candidate_name_hi'], $view_candidate['candidate_name_en']) : 'Candidate';
+
+    } elseif ($search_query) {
+        $s = $pdo->prepare("SELECT c.*, p.panchayat_name, p.slug as panchayat_slug, b.slug as block_slug, d.slug as district_slug
+                            FROM candidates c
+                            JOIN panchayats p ON c.panchayat_id = p.id
+                            JOIN blocks b ON p.block_id = b.id
+                            JOIN districts d ON b.district_id = d.id
+                            WHERE c.candidate_name_en LIKE ? OR c.candidate_name_hi LIKE ? OR c.village LIKE ?");
+        $s->execute(["%$search_query%", "%$search_query%", "%$search_query%"]);
+        $items         = $s->fetchAll();
+        $current_level = 'candidates';
+        $context_title = 'Search: ' . htmlspecialchars($search_query);
+
+    } elseif ($panchayat_slug) {
+        $pi = $pdo->prepare("SELECT id, panchayat_name, panchayat_name_hi FROM panchayats WHERE slug = ?");
+        $pi->execute([$panchayat_slug]); $pInfo = $pi->fetch();
+        if ($pInfo) {
+            $s = $pdo->prepare("SELECT c.* FROM candidates c WHERE c.panchayat_id = ? ORDER BY c.candidate_name_en");
+            $s->execute([$pInfo['id']]);
+            $items         = $s->fetchAll();
+            $current_level = 'candidates';
+            $context_title = lang_text($pInfo['panchayat_name_hi'], $pInfo['panchayat_name']);
+        }
+    } elseif ($block_slug) {
+        $bi = $pdo->prepare("SELECT id, block_name, block_name_hi FROM blocks WHERE slug = ?");
+        $bi->execute([$block_slug]); $bInfo = $bi->fetch();
+        if ($bInfo) {
+            $s = $pdo->prepare("SELECT p.*, (SELECT COUNT(*) FROM candidates c WHERE c.panchayat_id = p.id) as count FROM panchayats p WHERE p.block_id = ? ORDER BY p.panchayat_name");
+            $s->execute([$bInfo['id']]);
+            $items         = $s->fetchAll();
+            $current_level = 'panchayats';
+            $context_title = lang_text($bInfo['block_name_hi'], $bInfo['block_name']);
+        }
+    } elseif ($district_slug) {
+        $di = $pdo->prepare("SELECT id, district_name, district_name_hi FROM districts WHERE slug = ?");
+        $di->execute([$district_slug]); $dInfo = $di->fetch();
+        if ($dInfo) {
+            $s = $pdo->prepare("SELECT b.*, (SELECT COUNT(*) FROM panchayats p WHERE p.block_id = b.id) as count FROM blocks b WHERE b.district_id = ? ORDER BY b.block_name");
+            $s->execute([$dInfo['id']]);
+            $items         = $s->fetchAll();
+            $current_level = 'blocks';
+            $context_title = lang_text($dInfo['district_name_hi'], $dInfo['district_name']);
+        }
+    } else {
+        $items = $pdo->query("SELECT d.*, (SELECT COUNT(*) FROM blocks b WHERE b.district_id = d.id) as count FROM districts d ORDER BY d.district_name ASC LIMIT 12")->fetchAll();
+        $current_level = 'districts';
+    }
+
+    // Filter dropdowns
+    $allDistricts     = $pdo->query("SELECT id, district_name, district_name_hi, slug FROM districts ORDER BY district_name")->fetchAll();
+    $filterBlocks     = [];
+    $filterPanchayats = [];
+
+    if ($district_slug) {
+        $ds = $pdo->prepare("SELECT id FROM districts WHERE slug = ?"); $ds->execute([$district_slug]);
+        if ($dsId = $ds->fetchColumn()) {
+            $fb = $pdo->prepare("SELECT id, block_name, block_name_hi, slug FROM blocks WHERE district_id = ? ORDER BY block_name");
+            $fb->execute([$dsId]); $filterBlocks = $fb->fetchAll();
+        }
+    }
+    if ($block_slug) {
+        $bs = $pdo->prepare("SELECT id FROM blocks WHERE slug = ?"); $bs->execute([$block_slug]);
+        if ($bsId = $bs->fetchColumn()) {
+            $fp = $pdo->prepare("SELECT id, panchayat_name, panchayat_name_hi, slug FROM panchayats WHERE block_id = ? ORDER BY panchayat_name");
+            $fp->execute([$bsId]); $filterPanchayats = $fp->fetchAll();
+        }
+    }
+
+    // Stats
+    $totalCandidates = 0; $totalBlocks = 0; $totalPanchayats = 0;
+    try { $totalCandidates = $pdo->query("SELECT COUNT(*) FROM candidates")->fetchColumn(); } catch(Exception $e){}
+    try { $totalBlocks     = $pdo->query("SELECT COUNT(*) FROM blocks")->fetchColumn(); } catch(Exception $e){}
+    try { $totalPanchayats = $pdo->query("SELECT COUNT(*) FROM panchayats")->fetchColumn(); } catch(Exception $e){}
+    $totalDistricts = count($allDistricts);
+
+    // Level icons
+    $levelIcon = [
+        'districts'  => 'map',
+        'blocks'     => 'domain',
+        'panchayats' => 'cottage',
+        'candidates' => 'how_to_reg',
+    ];
+    ?>
+    <!DOCTYPE html>
+    <html class="light" lang="<?php echo $current_language; ?>">
+    <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="description" content="Enoxx News – Himachal Panchayat Election 2026 Candidate Portal">
+    <title>Enoxx News – <?php echo htmlspecialchars($context_title); ?></title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+    tailwind.config = {
+    darkMode: "class",
+    theme: {
+        extend: {
+        colors: {
+            "on-surface-variant":          "#4f4633",
+            "surface-container-high":      "#f2e7d7",
+            "surface-container":           "#f7ecdc",
+            "tertiary-container":          "#40d399",
+            "on-primary-fixed-variant":    "#5a4300",
+            "on-primary-fixed":            "#251a00",
+            "background":                  "#fff8f2",
+            "surface":                     "#fff8f2",
+            "primary-fixed":               "#ffdf9a",
+            "on-primary-container":        "#604700",
+            "inverse-surface":             "#353025",
+            "surface-bright":              "#fff8f2",
+            "error":                       "#ba1a1a",
+            "on-tertiary-container":       "#00563a",
+            "inverse-primary":             "#f7be1d",
+            "error-container":             "#ffdad6",
+            "on-primary":                  "#ffffff",
+            "primary-fixed-dim":           "#f7be1d",
+            "outline-variant":             "#d3c5ac",
+            "secondary-fixed":             "#d8e3fb",
+            "secondary-fixed-dim":         "#bcc7de",
+            "on-secondary-container":      "#586377",
+            "surface-container-highest":   "#ece1d1",
+            "primary":                     "#785a00",
+            "outline":                     "#817660",
+            "on-surface":                  "#201b11",
+            "surface-container-lowest":    "#ffffff",
+            "inverse-on-surface":          "#faefdf",
+            "primary-container":           "#eab308",
+            "secondary-container":         "#d5e0f8",
+            "on-tertiary-fixed-variant":   "#005236",
+            "on-secondary":                "#ffffff",
+            "surface-container-low":       "#fdf2e2",
+            "on-tertiary":                 "#ffffff",
+            "on-background":               "#201b11",
+            "on-secondary-fixed":          "#111c2d",
+            "on-secondary-fixed-variant":  "#3c475a",
+            "on-error-container":          "#93000a",
+            "secondary":                   "#545f73",
+            "tertiary-fixed-dim":          "#4edea3",
+            "surface-tint":                "#785a00",
+            "surface-dim":                 "#e3d9c9",
+            "on-tertiary-fixed":           "#002113",
+            "tertiary":                    "#006c49",
+            "on-error":                    "#ffffff",
+            "surface-variant":             "#ece1d1",
+            "tertiary-fixed":              "#6ffbbe"
+        },
+        fontFamily: {
+            "headline": ["Public Sans"],
+            "body":     ["Inter"],
+            "label":    ["Inter"]
+        },
+        borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+        },
+    },
+    }
+    </script>
+    <style>
+    .glass-gold {
+        background: rgba(255,248,242,0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(120,90,0,0.2);
+        box-shadow: 0 8px 32px 0 rgba(32,27,17,0.08);
+    }
+    .shimmer-gold {
+        background: linear-gradient(135deg,#785a00 0%,#eab308 50%,#785a00 100%);
+        background-size: 200% auto;
+        animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+    .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; }
+    .ticker-text { animation: tickerScroll 22s linear infinite; white-space: nowrap; }
+    @keyframes tickerScroll { 0%{transform:translateX(100%)} 100%{transform:translateX(-100%)} }
+    .pulse-dot { animation: pulseDot 1.5s infinite; }
+    @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* Grid card hover */
+    .grid-card { transition: transform .25s, box-shadow .25s, border-color .25s; }
+    .grid-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(120,90,0,.14); border-color: #eab308; }
+
+    /* Candidate photo */
+    .cand-photo { width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid #eab308;margin:0 auto .75rem; }
+    .cand-initial { width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#5a4300,#785a00);display:flex;align-items:center;justify-content:center;color:#ffdf9a;font-size:36px;font-weight:700;border:3px solid #eab308;margin:0 auto .75rem; }
+
+    /* Studio background */
+    .studio-bg { background: rgba(32,27,17,0.55); }
+    </style>
+    </head>
+    <body class="bg-surface font-body text-on-surface min-h-screen pb-24">
+
+    <!-- ═══════ TOP APP BAR ═══════ -->
+    <header class="fixed top-0 w-full z-50 bg-[#fff8f2]/90 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm">
+    <div class="flex justify-between items-center px-4 sm:px-6 h-16 w-full max-w-7xl mx-auto">
+
+        <!-- Logo -->
+        <a href="index.php" class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-primary-container text-primary font-black text-base font-headline">EN</div>
+        <span class="text-lg font-headline font-extrabold uppercase tracking-widest text-on-surface">Enoxx News</span>
+        </a>
+
+        <!-- Desktop Nav -->
+        <nav class="hidden md:flex items-center gap-1 font-headline text-sm font-semibold">
+        <a class="text-outline hover:bg-surface-container transition px-3 py-1.5 rounded-lg" href="#">Archive</a>
+        <a class="text-primary border-b-2 border-primary px-3 py-1.5" href="index.php"><?php echo __('Candidates'); ?></a>
+        <a class="text-outline hover:bg-surface-container transition px-3 py-1.5 rounded-lg" href="#">Verified</a>
+        </nav>
+
+        <!-- Right: language + search -->
+        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1 bg-surface-container rounded-full px-2 py-1 border border-outline-variant/30">
+            <a href="?lang=en<?php echo (!empty($_SERVER['QUERY_STRING']) && strpos($_SERVER['QUERY_STRING'],'lang=')===false)?'&'.$_SERVER['QUERY_STRING']:''; ?>"
+            class="text-[10px] font-black px-2 py-1 rounded-full transition <?php echo $current_language==='en'?'bg-primary text-white':'text-primary hover:bg-surface-container-high'; ?>">EN</a>
+            <a href="?lang=hi<?php echo (!empty($_SERVER['QUERY_STRING']) && strpos($_SERVER['QUERY_STRING'],'lang=')===false)?'&'.$_SERVER['QUERY_STRING']:''; ?>"
+            class="text-[10px] font-black px-2 py-1 rounded-full transition <?php echo $current_language==='hi'?'bg-primary text-white':'text-primary hover:bg-surface-container-high'; ?>">हिं</a>
+        </div>
+        <button class="p-2 text-primary hover:bg-surface-container rounded-full transition active:scale-95">
+            <span class="material-symbols-outlined text-[20px]">search</span>
+        </button>
+        <button class="p-2 text-primary hover:bg-surface-container rounded-full transition active:scale-95 relative">
+            <span class="material-symbols-outlined text-[20px]">notifications</span>
+            <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+        </button>
+        </div>
+    </div>
+
+    <!-- Breaking News Ticker -->
+    <div class="bg-primary-container overflow-hidden h-7 flex items-center">
+        <div class="px-4 font-black text-[10px] uppercase tracking-wider flex items-center gap-1.5 shrink-0 text-primary border-r border-primary/30 h-full">
+        <span class="w-1.5 h-1.5 rounded-full bg-primary pulse-dot"></span> Breaking
+        </div>
+        <div class="overflow-hidden flex-1">
+        <div class="ticker-text text-[11px] font-bold text-primary px-4">
+            Himachal Panchayat Election 2026 Archive Live &nbsp;|&nbsp; Dynamic Candidate Dossiers Now Available &nbsp;|&nbsp; 100% Editorial Verification System Active
+        </div>
+        </div>
+    </div>
+    </header>
+
+    <!-- ═══════ LOADING OVERLAY ═══════ -->
+    <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(32,27,17,.7);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff8f2;padding:28px 48px;border-radius:16px;text-align:center;">
+        <div style="border:4px solid #f7ecdc;border-top:4px solid #785a00;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 14px;"></div>
+        <p style="font-family:Inter,sans-serif;font-size:14px;color:#4f4633;font-weight:600;">Generating dossier…</p>
+    </div>
+    </div>
+    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+    <main class="relative pt-24 min-h-screen flex flex-col p-4 max-w-7xl mx-auto">
+
+    <?php if ($current_level === 'profile' && $view_candidate): ?>
+    <!-- ═══════════════════ CANDIDATE PROFILE ═══════════════════ -->
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-[11px] font-label font-bold uppercase tracking-widest text-outline mb-6 flex-wrap">
+        <a href="index.php" class="hover:text-primary transition">Home</a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <a href="index.php?district=<?php echo $view_candidate['district_slug']; ?>" class="hover:text-primary transition"><?php echo htmlspecialchars(lang_text($view_candidate['district_name_hi'],$view_candidate['district_name'])); ?></a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <a href="index.php?district=<?php echo $view_candidate['district_slug']; ?>&block=<?php echo $view_candidate['block_slug']; ?>" class="hover:text-primary transition"><?php echo htmlspecialchars(lang_text($view_candidate['block_name_hi'],$view_candidate['block_name'])); ?></a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="text-primary"><?php echo htmlspecialchars(lang_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en'])); ?></span>
+    </nav>
+
+    <!-- ── Capture Area (Premium Dossier Card) ── -->
+    <div id="capture-area">
+        <div class="glass-gold rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row border border-primary-container/30">
+
+        <!-- LEFT: Photo + Identity -->
+        <div class="md:w-2/5 relative min-h-[280px] md:min-h-[400px]">
+            <?php
+            $isVerified = ($view_candidate['status'] === 'verified');
+            $hasPhoto   = $isVerified && !empty($view_candidate['photo_url']) && file_exists('uploads/'.$view_candidate['photo_url']);
+            $photoSrc   = $hasPhoto ? 'uploads/'.$view_candidate['photo_url'] : null;
+            $initials   = mb_substr(lang_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en']),0,1);
+            ?>
+            <?php if ($photoSrc): ?>
+            <img class="absolute inset-0 w-full h-full object-cover" src="<?php echo htmlspecialchars($photoSrc); ?>" alt="Candidate Photo">
+            <?php else: ?>
+            <div class="absolute inset-0 bg-gradient-to-br from-[#5a4300] to-[#785a00] flex items-center justify-center">
+            <span class="text-[10rem] font-bold text-primary-fixed/20 select-none font-headline"><?php echo $initials; ?></span>
+            </div>
+            <?php endif; ?>
+            <div class="absolute inset-0 bg-gradient-to-t from-on-surface to-transparent opacity-80"></div>
+            <!-- Candidate Tag -->
+            <div class="absolute bottom-8 left-8 right-8 text-white">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="px-3 py-1 bg-primary text-white text-[10px] font-bold tracking-widest uppercase rounded-sm">
+                <?php echo htmlspecialchars(lang_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?>
+                </span>
+                <?php if ($isVerified): ?>
+                <span class="px-3 py-1 bg-tertiary text-white text-[10px] font-bold tracking-widest uppercase rounded-sm">Verified</span>
+                <?php endif; ?>
+            </div>
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-headline font-extrabold tracking-tight leading-none mb-1">
+                <?php echo htmlspecialchars(lang_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en'])); ?>
+            </h1>
+            <h2 class="text-base sm:text-xl font-headline font-light opacity-90">
+                <?php echo htmlspecialchars($view_candidate['candidate_name_hi'] ?: $view_candidate['candidate_name_en']); ?>
+            </h2>
+            </div>
+        </div>
+
+        <!-- RIGHT: Credentials -->
+        <div class="md:w-3/5 p-5 sm:p-8 md:p-10 flex flex-col justify-between gap-5 sm:gap-7">
+
+            <!-- Verification Badge -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full border-2 border-primary-container flex items-center justify-center bg-white shadow-inner">
+                <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">verified_user</span>
+                </div>
+                <div>
+                <h3 class="text-sm font-headline font-bold text-primary tracking-wide">CIVITAS AURUM</h3>
+                <div class="bg-tertiary-container/20 text-on-tertiary-container text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full inline-block">
+                    <?php echo $isVerified ? 'Verification Complete' : 'Pending Verification'; ?>
+                </div>
+                </div>
+            </div>
+            <p class="text-[9px] text-outline leading-tight max-w-[140px] italic">Verified through the Enoxx News Network editorial verification system.</p>
+            </div>
+
+            <!-- Editorial Grid -->
+            <div class="grid grid-cols-1 xs:grid-cols-2 gap-y-4 sm:gap-y-6 gap-x-8">
+            <div class="space-y-1">
+                <label class="text-[10px] uppercase tracking-widest font-bold text-outline"><?php echo __('District'); ?></label>
+                <p class="text-lg font-headline font-bold text-on-surface"><?php echo htmlspecialchars(lang_text($view_candidate['district_name_hi'],$view_candidate['district_name'])); ?></p>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] uppercase tracking-widest font-bold text-outline"><?php echo __('Block'); ?></label>
+                <p class="text-lg font-headline font-bold text-on-surface"><?php echo htmlspecialchars(lang_text($view_candidate['block_name_hi'],$view_candidate['block_name'])); ?></p>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] uppercase tracking-widest font-bold text-outline"><?php echo __('Panchayat'); ?></label>
+                <p class="text-lg font-headline font-bold text-on-surface"><?php echo htmlspecialchars(lang_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?></p>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] uppercase tracking-widest font-bold text-outline"><?php echo __('Village'); ?></label>
+                <p class="text-lg font-headline font-bold text-on-surface"><?php echo htmlspecialchars($view_candidate['village']); ?></p>
+            </div>
+            <div class="space-y-1 border-t border-outline-variant/30 pt-4">
+                <label class="text-[10px] uppercase tracking-widest font-bold text-outline"><?php echo __('Age / Gender'); ?></label>
+                <p class="text-base font-body font-semibold text-on-surface"><?php echo $view_candidate['age']; ?>, <?php echo getGenderText($view_candidate['gender']); ?></p>
+            </div>
+            <div class="space-y-1 border-t border-outline-variant/30 pt-4">
+                <label class="text-[10px] uppercase tracking-widest font-bold text-outline"><?php echo __('Education'); ?></label>
+                <p class="text-base font-body font-semibold text-on-surface"><?php echo htmlspecialchars($view_candidate['education'] ?: '—'); ?></p>
+            </div>
+            </div>
+
+            <!-- Direct Line -->
+            <div class="bg-surface-container-low rounded-xl p-4 flex items-center justify-between border border-outline-variant/20">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary">phone_in_talk</span>
+                </div>
+                <div>
+                <label class="text-[9px] uppercase tracking-widest font-extrabold text-primary"><?php echo __('Direct Line'); ?></label>
+                <p class="text-lg font-headline font-extrabold tracking-tighter text-on-surface"><?php echo htmlspecialchars($view_candidate['mobile_number'] ?: '—'); ?></p>
+                </div>
+            </div>
+            <span class="text-[9px] font-bold text-tertiary uppercase flex items-center gap-1">
+                <span class="w-1.5 h-1.5 bg-tertiary rounded-full animate-pulse"></span> Secure
+            </span>
+            </div>
+
+            <!-- Vision -->
+            <?php $vision = lang_text($view_candidate['short_notes_hi']??'',$view_candidate['short_notes_en']??'') ?: 'Dedicated to serving the people with transparency and integrity.'; ?>
+            <div class="bg-surface-container rounded-xl p-4 border border-outline-variant/20">
+            <label class="text-[10px] uppercase tracking-widest font-bold text-primary block mb-2"><?php echo __('Candidate Vision'); ?></label>
+            <p class="text-sm font-body text-on-surface-variant italic leading-relaxed">"<?php echo htmlspecialchars($vision); ?>"</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-col sm:flex-row gap-3">
+            <button onclick="downloadDossier()" class="flex-1 shimmer-gold text-white font-headline font-bold py-3.5 rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">download</span> <?php echo __('Download as PNG'); ?>
+            </button>
+            <a href="javascript:history.back()" class="flex-1 bg-on-surface text-surface font-headline font-bold py-3.5 rounded-xl hover:bg-on-surface-variant active:scale-95 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">arrow_back</span> <?php echo __('Go Back'); ?>
+            </a>
+            </div>
+        </div>
+        </div>
+
+        <!-- Metadata Footer -->
+        <div class="mt-4 flex flex-wrap justify-between items-center px-2 gap-4">
+        <div class="flex items-center gap-4 text-outline font-label text-[10px] uppercase tracking-widest font-bold">
+            <span>Reference ID: ENX-<?php echo str_pad($view_candidate['id'],4,'0',STR_PAD_LEFT); ?>-<?php echo strtoupper(substr($view_candidate['district_slug']??'HP',0,3)); ?></span>
+            <span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+            <span>Last Update: <?php echo date('d M Y'); ?></span>
+        </div>
+        <div class="flex gap-4">
+            <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition">share</span>
+            <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition">print</span>
+        </div>
+        </div>
+    </div><!-- /capture-area -->
+
+    <script>
+    async function downloadDossier() {
+        const el = document.getElementById('capture-area');
+        const ov = document.getElementById('loading-overlay');
+        ov.style.display = 'flex';
+        try {
+        await new Promise(r => setTimeout(r, 400));
+        const canvas = await html2canvas(el, { scale: 3, backgroundColor: '#fff8f2', useCORS: true, logging: false });
+        const a = document.createElement('a');
+        a.download = 'ENX_Dossier_<?php echo $view_candidate['id']; ?>.png';
+        a.href = canvas.toDataURL('image/png'); a.click();
+        } catch(e) { alert('Error generating image. Please try again.'); }
+        finally { ov.style.display = 'none'; }
+    }
+    </script>
+
+    <?php else: ?>
+    <!-- ═══════════════════ PORTAL LANDING — Districts / Grid ═══════════════════ -->
+
+    <!-- Page Header -->
+    <div class="mb-8">
+        <!-- Breadcrumb -->
+        <nav class="flex items-center gap-2 text-[11px] font-label font-bold uppercase tracking-widest text-outline mb-4 flex-wrap">
+        <a href="index.php" class="hover:text-primary transition">Home</a>
+        <?php if ($district_slug): ?>
+            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            <?php $dLabel = $dInfo['district_name']??$district_slug; $dLabelHi = $dInfo['district_name_hi']??''; ?>
+            <a href="index.php?district=<?php echo $district_slug; ?>" class="hover:text-primary transition"><?php echo htmlspecialchars(lang_text($dLabelHi,$dLabel)); ?></a>
+        <?php endif; ?>
+        <?php if ($block_slug): ?>
+            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            <?php $bLabel = $bInfo['block_name']??$block_slug; $bLabelHi = $bInfo['block_name_hi']??''; ?>
+            <a href="index.php?district=<?php echo $district_slug; ?>&block=<?php echo $block_slug; ?>" class="hover:text-primary transition"><?php echo htmlspecialchars(lang_text($bLabelHi,$bLabel)); ?></a>
+        <?php endif; ?>
+        <?php if ($panchayat_slug): ?>
+            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span class="text-primary"><?php echo htmlspecialchars(lang_text($pInfo['panchayat_name_hi']??'',$pInfo['panchayat_name']??$panchayat_slug)); ?></span>
+        <?php endif; ?>
+        </nav>
+
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <p class="text-[10px] font-black uppercase tracking-[.3em] text-primary-container bg-primary/10 px-3 py-1 rounded-full inline-block mb-3">Panchayat Election 2026 Registry</p>
+            <h1 class="text-4xl sm:text-5xl font-headline font-extrabold text-on-surface leading-tight">
+            <?php echo htmlspecialchars($context_title); ?>
+            </h1>
+            <p class="text-sm text-on-surface-variant mt-1 font-body">
+            <?php
+            $levelName = ['districts'=>'Districts','blocks'=>'Blocks','panchayats'=>'Panchayats','candidates'=>'Candidates'];
+            echo count($items) . ' ' . ($levelName[$current_level]??'Results');
+            ?>
+            </p>
+        </div>
+
+        <!-- Stats pills (home only) -->
+        <?php if ($current_level === 'districts'): ?>
+        <div class="flex gap-3 flex-wrap">
+            <?php foreach ([
+            ['map','Districts',$totalDistricts],
+            ['domain','Blocks',$totalBlocks],
+            ['cottage','Panchayats',$totalPanchayats],
+            ['how_to_reg','Candidates',$totalCandidates],
+            ] as [$ic,$lbl,$val]): ?>
+            <div class="glass-gold px-4 py-3 rounded-2xl text-center min-w-[80px]">
+            <span class="material-symbols-outlined text-primary text-[18px] block"><?php echo $ic; ?></span>
+            <span class="text-xl font-headline font-black text-on-surface block"><?php echo number_format($val); ?></span>
+            <span class="text-[9px] text-outline uppercase tracking-wider"><?php echo $lbl; ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Search / Filter Bar -->
+    <div class="glass-gold rounded-2xl p-4 mb-10 border border-primary-container/20">
+        <form method="GET" action="index.php" class="flex flex-wrap gap-3 items-end">
+        <?php if ($current_language !== 'hi'): ?><input type="hidden" name="lang" value="<?php echo $current_language; ?>"><?php endif; ?>
+
+        <div class="flex-1 min-w-[160px]">
+            <label class="block text-[10px] uppercase tracking-widest font-black text-outline mb-1"><?php echo __('District'); ?></label>
+            <select name="district" onchange="this.form.submit()" class="w-full bg-surface border border-outline-variant/40 rounded-xl px-4 py-2.5 text-sm font-semibold text-on-surface focus:ring-2 focus:ring-primary outline-none">
+            <option value="">— <?php echo __('All Districts'); ?> —</option>
+            <?php foreach ($allDistricts as $d): ?>
+            <option value="<?php echo $d['slug']; ?>" <?php echo $district_slug===$d['slug']?'selected':''; ?>><?php echo htmlspecialchars(lang_text($d['district_name_hi'],$d['district_name'])); ?></option>
+            <?php endforeach; ?>
+            </select>
+        </div>
+
+        <?php if (!empty($filterBlocks)): ?>
+        <div class="flex-1 min-w-[160px]">
+            <label class="block text-[10px] uppercase tracking-widest font-black text-outline mb-1"><?php echo __('Block'); ?></label>
+            <select name="block" onchange="this.form.submit()" class="w-full bg-surface border border-outline-variant/40 rounded-xl px-4 py-2.5 text-sm font-semibold text-on-surface focus:ring-2 focus:ring-primary outline-none">
+            <option value="">— <?php echo __('All Blocks'); ?> —</option>
+            <?php foreach ($filterBlocks as $b): ?>
+            <option value="<?php echo $b['slug']; ?>" <?php echo $block_slug===$b['slug']?'selected':''; ?>><?php echo htmlspecialchars(lang_text($b['block_name_hi'],$b['block_name'])); ?></option>
+            <?php endforeach; ?>
+            </select>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($filterPanchayats)): ?>
+        <div class="flex-1 min-w-[160px]">
+            <label class="block text-[10px] uppercase tracking-widest font-black text-outline mb-1"><?php echo __('Panchayat'); ?></label>
+            <select name="panchayat" onchange="this.form.submit()" class="w-full bg-surface border border-outline-variant/40 rounded-xl px-4 py-2.5 text-sm font-semibold text-on-surface focus:ring-2 focus:ring-primary outline-none">
+            <option value="">— <?php echo __('All Panchayats'); ?> —</option>
+            <?php foreach ($filterPanchayats as $p): ?>
+            <option value="<?php echo $p['slug']; ?>" <?php echo $panchayat_slug===$p['slug']?'selected':''; ?>><?php echo htmlspecialchars(lang_text($p['panchayat_name_hi'],$p['panchayat_name'])); ?></option>
+            <?php endforeach; ?>
+            </select>
+        </div>
+        <?php endif; ?>
+
+        <div class="flex-[2] min-w-[200px] relative">
+            <label class="block text-[10px] uppercase tracking-widest font-black text-outline mb-1"><?php echo __('Search'); ?></label>
+            <input type="text" name="search" value="<?php echo htmlspecialchars($search_query??''); ?>"
+                placeholder="<?php echo __('Search by name or village...'); ?>"
+                class="w-full bg-surface border border-outline-variant/40 rounded-xl px-4 py-2.5 pr-24 text-sm outline-none focus:ring-2 focus:ring-primary">
+            <button type="submit" class="absolute right-2 bottom-2 bg-primary text-white text-[10px] font-black uppercase tracking-wider px-4 py-1.5 rounded-lg hover:bg-on-primary-fixed-variant transition">
+            Seek
+            </button>
+        </div>
+
+        <?php if ($search_query || $district_slug || $block_slug || $panchayat_slug): ?>
+        <a href="index.php" class="self-end px-4 py-2.5 text-[11px] font-black text-outline hover:text-primary border border-outline-variant/30 rounded-xl transition flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">close</span> Reset
+        </a>
+        <?php endif; ?>
+        </form>
+    </div>
+
+    <!-- ── Grid ── -->
+    <?php if (empty($items)): ?>
+    <div class="glass-gold rounded-2xl p-16 text-center">
+        <span class="material-symbols-outlined text-primary text-[64px] block mb-4">search_off</span>
+        <h3 class="text-xl font-headline font-bold text-on-surface mb-2">No results found</h3>
+        <p class="text-sm text-on-surface-variant">Please adjust your filters or search term.</p>
+    </div>
+
+    <?php else: ?>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-16">
+        <?php foreach ($items as $item):
+        $slug    = $item['slug'];
+        $name_hi = $item['district_name_hi'] ?? $item['block_name_hi'] ?? $item['panchayat_name_hi'] ?? $item['candidate_name_hi'] ?? '';
+        $name_en = $item['district_name']    ?? $item['block_name']    ?? $item['panchayat_name']    ?? $item['candidate_name_en'] ?? '';
+        $link    = '?';
+        if ($current_level === 'districts')  $link .= "district=$slug";
+        elseif ($current_level === 'blocks') $link .= "district=$district_slug&block=$slug";
+        elseif ($current_level === 'panchayats') $link .= "district=$district_slug&block=$block_slug&panchayat=$slug";
+        elseif ($current_level === 'candidates') $link .= "candidate=$slug";
+        if ($current_language !== 'hi') $link .= "&lang=$current_language";
+
+        $thumb    = null;
+        $initChar = mb_substr(lang_text($name_hi,$name_en),0,1);
+        if ($current_level === 'candidates') {
+            $isV  = ($item['status'] === 'verified');
+            $thumb = ($isV && !empty($item['photo_url']) && file_exists('uploads/'.$item['photo_url'])) ? 'uploads/'.$item['photo_url'] : null;
+        }
+        ?>
+        <a href="<?php echo $link; ?>" class="group block h-full">
+
+        <?php if ($current_level === 'candidates'): ?>
+        <!-- Candidate Card -->
+        <div class="glass-gold grid-card h-full rounded-2xl p-6 flex flex-col items-center text-center">
+            <?php if ($thumb): ?>
+            <img src="<?php echo $thumb; ?>" class="cand-photo" alt="<?php echo htmlspecialchars(lang_text($name_hi,$name_en)); ?>">
+            <?php else: ?>
+            <div class="cand-initial"><?php echo $initChar; ?></div>
+            <?php endif; ?>
+            <h3 class="text-lg font-headline font-bold text-on-surface mb-1 group-hover:text-primary transition"><?php echo htmlspecialchars(lang_text($name_hi,$name_en)); ?></h3>
+            <p class="text-xs text-on-surface-variant mb-3"><?php echo htmlspecialchars($item['village']??''); ?></p>
+            <span class="text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider <?php echo getStatusClass($item['status']); ?>"><?php echo getStatusText($item['status']); ?></span>
+            <div class="mt-4 flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest opacity-60 group-hover:opacity-100 transition">
+            View Dossier <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </div>
+        </div>
+
+        <?php else: ?>
+        <!-- District / Block / Panchayat Card -->
+        <div class="glass-gold grid-card h-full rounded-2xl overflow-hidden">
+            <!-- Card Top Band -->
+            <div class="h-2" style="background: linear-gradient(90deg,#785a00,#eab308,#785a00);"></div>
+            <div class="p-6 flex flex-col h-full">
+            <!-- Icon + Count -->
+            <div class="flex items-start justify-between mb-5">
+                <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary transition-all">
+                <span class="material-symbols-outlined text-primary group-hover:text-white text-3xl transition"><?php echo $levelIcon[$current_level]; ?></span>
+                </div>
+                <?php if (isset($item['count'])): ?>
+                <div class="bg-primary-container text-primary text-[11px] font-black px-3 py-1.5 rounded-full uppercase tracking-tight">
+                <?php echo number_format($item['count']); ?>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Name -->
+            <h3 class="text-2xl font-headline font-extrabold text-on-surface group-hover:text-primary transition leading-tight mb-2">
+                <?php echo htmlspecialchars(lang_text($name_hi,$name_en)); ?>
+            </h3>
+            <?php if ($name_hi && $name_en && $name_hi !== $name_en): ?>
+            <p class="text-sm text-on-surface-variant font-body mb-4"><?php echo htmlspecialchars($name_en); ?></p>
+            <?php endif; ?>
+
+            <div class="mt-auto flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-[.25em] opacity-50 group-hover:opacity-100 transition">
+                Explore <span class="material-symbols-outlined text-[14px] group-hover:translate-x-1 transition-transform">double_arrow</span>
+            </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        </a>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php endif; // end portal/profile toggle ?>
+    </main>
+
+    <!-- ═══════ FOOTER ═══════ -->
+    <footer class="bg-inverse-surface text-inverse-on-surface mt-auto">
+    <div class="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div class="sm:col-span-2 lg:col-span-1">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-primary-container text-primary font-black text-sm font-headline">EN</div>
+            <span class="font-headline font-extrabold text-lg uppercase tracking-widest text-inverse-on-surface">Enoxx News</span>
+        </div>
+        <p class="text-xs text-outline leading-relaxed max-w-xs">Providing 24/7 hyper-local reporting and civic authentication for Himachal Pradesh. Panchayat Elections 2026.</p>
+        </div>
+        <div>
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-primary-container mb-4">Network</h4>
+        <ul class="space-y-2 text-xs text-outline">
+            <li><a href="#" class="hover:text-inverse-on-surface transition">Himachal Bureau</a></li>
+            <li><a href="#" class="hover:text-inverse-on-surface transition">Political Pulse</a></li>
+            <li><a href="#" class="hover:text-inverse-on-surface transition">Civic Audit 2026</a></li>
+        </ul>
+        </div>
+        <div>
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-primary-container mb-4">Legal</h4>
+        <ul class="space-y-2 text-xs text-outline">
+            <li><a href="#" class="hover:text-inverse-on-surface transition">Verification Policy</a></li>
+            <li><a href="#" class="hover:text-inverse-on-surface transition">Terms of Service</a></li>
+            <li><a href="#" class="hover:text-inverse-on-surface transition">Privacy Protocol</a></li>
+        </ul>
+        </div>
+        <div>
+        <h4 class="text-[10px] font-black uppercase tracking-widest text-primary-container mb-4">Contact</h4>
+        <ul class="space-y-2 text-xs text-outline">
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-primary-container">mail</span> info@enoxxnews.in</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-primary-container">phone</span> +91 98765 43210</li>
+            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-primary-container">location_on</span> Dharamshala, HP</li>
+        </ul>
+        </div>
+    </div>
+    <div class="border-t border-white/10 py-6 text-center text-[9px] font-black uppercase tracking-[.4em] text-outline">
+        © 2026 Enoxx News Media Network. All Rights Reserved.
+    </div>
+    </footer>
+
+    <!-- ═══════ BOTTOM NAV (mobile) ═══════ -->
+    <nav class="fixed bottom-0 left-0 w-full flex justify-around items-center h-20 pb-safe px-4 bg-[#fff8f2] border-t border-outline-variant/20 shadow-[0_-4px_40px_rgba(32,27,17,0.06)] z-50 md:hidden">
+    <a class="flex flex-col items-center justify-center text-outline px-4 py-1" href="#">
+        <span class="material-symbols-outlined">book_5</span>
+        <span class="text-[10px] font-semibold uppercase tracking-tight mt-1">Archive</span>
+    </a>
+    <a class="flex flex-col items-center justify-center bg-primary/10 text-primary rounded-xl px-4 py-1" href="index.php">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">person_search</span>
+        <span class="text-[10px] font-semibold uppercase tracking-tight mt-1">Candidates</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-outline px-4 py-1" href="#">
+        <span class="material-symbols-outlined">verified</span>
+        <span class="text-[10px] font-semibold uppercase tracking-tight mt-1">Verified</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-outline px-4 py-1" href="#">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="text-[10px] font-semibold uppercase tracking-tight mt-1">Settings</span>
+    </a>
+    </nav>
+
+    </body>
+    </html>
+
+

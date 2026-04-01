@@ -1,320 +1,197 @@
- <?php
-/**
- * Himachal Panchayat Elections Configuration File
- * Version: 2.2
- */
+<?php
+// config.php - Database configuration and common functions
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// =====================================================
-// Error Reporting
-// =====================================================
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+$host = 'localhost';
+$dbname = 'himachal_panchayat_elections';
+$username = 'root';
+$password = '';
 
-// =====================================================
-// Database Configuration
-// =====================================================
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'himachal_panchayat_elections');
-define('DB_CHARSET', 'utf8mb4');
-
-// =====================================================
-// Site Configuration
-// =====================================================
-define('SITE_URL', 'http://localhost/election');
-define('SITE_NAME', 'Himachal Panchayat Elections 2026');
-define('UPLOAD_DIR', __DIR__ . '/uploads/');
-
-// =====================================================
-// Database Connection
-// =====================================================
 try {
-    $pdo = new PDO(
-        "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET,
-        DB_USER,
-        DB_PASS,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false
-        ]
-    );
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
     die("Connection failed: " . $e->getMessage());
 }
 
-// =====================================================
-// Helper Functions
-// =====================================================
-
-/**
- * Create unique URL-friendly slug with duplicate checking
- * Fixed version - removed dependency on 'temp' table
- */
-function createUniqueSlug($pdo, $string, $table = 'candidates', $column = 'slug', $id = null) {
-    // Convert to lowercase and replace special characters
-    $slug = preg_replace('/[^a-z0-9]+/i', '-', strtolower(trim($string)));
-    $slug = trim($slug, '-');
-    
-    // If empty slug, create a random one
-    if (empty($slug)) {
-        $slug = 'candidate-' . uniqid();
-    }
-    
-    $originalSlug = $slug;
-    $counter = 1;
-    
-    // Check if slug exists in the specified table
-    while (true) {
-        try {
-            if ($id) {
-                $stmt = $pdo->prepare("SELECT id FROM $table WHERE $column = ? AND id != ?");
-                $stmt->execute([$slug, $id]);
-            } else {
-                $stmt = $pdo->prepare("SELECT id FROM $table WHERE $column = ?");
-                $stmt->execute([$slug]);
-            }
-            
-            if (!$stmt->fetch()) {
-                break;
-            }
-        } catch (Exception $e) {
-            // If table doesn't exist or other error, break and return the slug
-            break;
-        }
-        
-        $slug = $originalSlug . '-' . $counter;
-        $counter++;
-    }
-    
-    return $slug;
+// OpenAI API Key for Automatic Translation
+if (!defined('OPENAI_API_KEY')) {
+    define('OPENAI_API_KEY', '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');
 }
 
 /**
- * Upload photo with GD library check
- */
-function uploadPhoto($file) {
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    $maxSize = 5 * 1024 * 1024; // 5MB
-    
-    // Check for errors
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        return ['error' => 'Upload failed with error code: ' . $file['error']];
-    }
-    
-    // Check file type
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
-    
-    if (!in_array($mimeType, $allowedTypes)) {
-        return ['error' => 'Invalid file type. Only JPG, PNG, GIF, and WEBP are allowed.'];
-    }
-    
-    // Check file size
-    if ($file['size'] > $maxSize) {
-        return ['error' => 'File too large. Maximum size is 5MB.'];
-    }
-    
-    // Create upload directory if not exists
-    if (!is_dir(UPLOAD_DIR)) {
-        mkdir(UPLOAD_DIR, 0755, true);
-    }
-    
-    // Generate unique filename
-    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $filename = uniqid() . '_' . date('Ymd') . '.' . $extension;
-    $filepath = UPLOAD_DIR . $filename;
-    
-    // Move uploaded file
-    if (move_uploaded_file($file['tmp_name'], $filepath)) {
-        // Try to optimize image if GD library is available
-        if (extension_loaded('gd')) {
-            optimizeImage($filepath, $mimeType);
-        }
-        
-        return [
-            'success' => true,
-            'filename' => $filename,
-            'path' => 'uploads/' . $filename,
-            'url' => SITE_URL . '/uploads/' . $filename
-        ];
-    }
-    
-    return ['error' => 'Failed to save uploaded file.'];
-}
-
-/**
- * Optimize image (resize if too large)
- */
-function optimizeImage($filepath, $mimeType) {
-    // Check if GD functions exist
-    if (!function_exists('imagecreatefromjpeg') || !function_exists('imagecreatefrompng') || !function_exists('imagecreatefromgif')) {
-        return false;
-    }
-    
-    list($width, $height) = getimagesize($filepath);
-    
-    // Max dimensions
-    $maxWidth = 800;
-    $maxHeight = 800;
-    
-    // Only resize if image is larger than max dimensions
-    if ($width > $maxWidth || $height > $maxHeight) {
-        // Calculate new dimensions
-        $ratio = min($maxWidth / $width, $maxHeight / $height);
-        $newWidth = round($width * $ratio);
-        $newHeight = round($height * $ratio);
-        
-        try {
-            switch ($mimeType) {
-                case 'image/jpeg':
-                    if (function_exists('imagecreatefromjpeg')) {
-                        $src = imagecreatefromjpeg($filepath);
-                        $dst = imagecreatetruecolor($newWidth, $newHeight);
-                        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                        imagejpeg($dst, $filepath, 85);
-                        imagedestroy($src);
-                        imagedestroy($dst);
-                    }
-                    break;
-                    
-                case 'image/png':
-                    if (function_exists('imagecreatefrompng')) {
-                        $src = imagecreatefrompng($filepath);
-                        $dst = imagecreatetruecolor($newWidth, $newHeight);
-                        imagealphablending($dst, false);
-                        imagesavealpha($dst, true);
-                        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                        imagepng($dst, $filepath, 8);
-                        imagedestroy($src);
-                        imagedestroy($dst);
-                    }
-                    break;
-                    
-                case 'image/gif':
-                    if (function_exists('imagecreatefromgif')) {
-                        $src = imagecreatefromgif($filepath);
-                        $dst = imagecreatetruecolor($newWidth, $newHeight);
-                        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                        imagegif($dst, $filepath);
-                        imagedestroy($src);
-                        imagedestroy($dst);
-                    }
-                    break;
-            }
-        } catch (Exception $e) {
-            error_log("Image optimization failed: " . $e->getMessage());
-        }
-    }
-    
-    return true;
-}
-
-/**
- * Translate English text to Hindi using Google Translate API
+ * Core Translation Function (OpenAI + Google Fallback)
  */
 function translateToHindi($text) {
-    // Common translations cache
-    $commonTranslations = [
-        'Kangra' => 'कांगड़ा',
-        'Mandi' => 'मंडी',
-        'Shimla' => 'शिमला',
-        'Solan' => 'सोलन',
-        'Una' => 'ऊना',
-        'Hamirpur' => 'हमीरपुर',
-        'Bilaspur' => 'बिलासपुर',
-        'Chamba' => 'चंबा',
-        'Kullu' => 'कुल्लू',
-        'Lahaul' => 'लाहौल',
-        'Spiti' => 'स्पीति',
-        'Kinnaur' => 'किन्नौर',
-        'Sirmaur' => 'सिरमौर',
-        'Dharamshala' => 'धर्मशाला',
-        'Palampur' => 'पालमपुर',
-        'Baijnath' => 'बैजनाथ',
-        'Jaisinghpur' => 'जयसिंहपुर',
-        'Nurpur' => 'नूरपुर',
-        'Indora' => 'इंदौरा',
-        'Fatehpur' => 'फतेहपुर',
-        'Jawali' => 'जवाली',
-        'Jaswan' => 'जसवां',
-        'Rakkar' => 'रक्कड़',
-        'Khaniyara' => 'खनियारा',
-        'Sidhpur' => 'सिद्धपुर',
-        'Gharoh' => 'घरोह',
-        'Yol' => 'योल',
-        'Kand' => 'कंड',
-        'Naddi' => 'नाड्डी',
-        'McLeod Ganj' => 'मैक्लोडगंज',
-        'Forsyth Ganj' => 'फोरसाइथगंज',
-        'Dharamkot' => 'धर्मकोट',
-        'Bhagsu' => 'भागसू',
-        'Dari' => 'दारी',
-        'Cheelgari' => 'चीलगाड़ी',
-        'Kareri' => 'करेड़ी',
-        'Rajpur' => 'राजपुर',
-        'Nagrota Bagwan' => 'नगरोटा बगवां',
-        'Dehra Gopipur' => 'देहरा गोपीपुर',
-        'Shahpur' => 'शाहपुर',
-        'Khundian' => 'खुंडियां'
+    if (empty($text)) return '';
+    if (preg_match('/[\x{0900}-\x{097F}]/u', $text)) return $text;
+
+    $common = [
+        'Pradhan' => 'प्रधान', 'Vice Pradhan' => 'उप प्रधान', 'BDC Member' => 'बीडीसी सदस्य',
+        'Zila Parishad Member' => 'जिला परिषद सदस्य', 'District' => 'जिला', 'Block' => 'खंड',
+        'Panchayat' => 'पंचायत', 'Village' => 'गांव', 'Farmer' => 'किसान', 'Business' => 'व्यवसाय',
+        'Education' => 'शिक्षा', 'Profession' => 'व्यवसायी', 'Male' => 'पुरुष', 'Female' => 'महिला'
     ];
-    
-    // Check cache
-    if (isset($commonTranslations[$text])) {
-        return $commonTranslations[$text];
+    if (isset($common[trim($text)])) return $common[trim($text)];
+
+    // OpenAI Attempt
+    if (defined('OPENAI_API_KEY') && !empty(OPENAI_API_KEY)) {
+        $url = 'https://api.openai.com/v1/chat/completions';
+        $data = ['model' => 'gpt-4o-mini', 'messages' => [['role' => 'system', 'content' => 'Translate to Hindi. Only return translation.'], ['role' => 'user', 'content' => $text]], 'temperature' => 0.3];
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . OPENAI_API_KEY]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($http_code === 200) {
+            $result = json_decode($response, true);
+            if (isset($result['choices'][0]['message']['content'])) return trim($result['choices'][0]['message']['content']);
+        }
     }
-    
-    // Use Google Translate API
-    $url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=" . urlencode($text);
-    
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_TIMEOUT => 5
-    ]);
-    
-    $response = curl_exec($ch);
-    $error = curl_error($ch);
-    curl_close($ch);
-    
-    if ($error || !$response) {
-        return $text;
-    }
-    
-    $data = json_decode($response);
-    if (isset($data[0][0][0])) {
-        return $data[0][0][0];
-    }
-    
+
+    // Google Fallback
+    try {
+        $url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=" . urlencode($text);
+        $res = file_get_contents($url);
+        if ($res) {
+            $json = json_decode($res, true);
+            if (isset($json[0][0][0])) return $json[0][0][0];
+        }
+    } catch (Exception $e) {}
     return $text;
 }
 
+// Auth Functions
+function isLoggedIn() { return isset($_SESSION['user_id']); }
+function isAdmin() { return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin'; }
+function isEmployee() { return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'employee'; }
+
+function requireLogin() {
+    if (!isLoggedIn()) { header('Location: login.php'); exit; }
+}
+
+// Data Fetching
+function getCandidates($pdo, $filters = []) {
+    $sql = "SELECT c.*, d.district_name, d.district_name_hi, rt.type_key, rt.type_name, rt.type_name_hi, b.block_name, b.block_name_hi, p.panchayat_name, p.panchayat_name_hi FROM candidates c 
+            LEFT JOIN districts d ON c.district_id = d.id 
+            LEFT JOIN representative_types rt ON c.representative_type_id = rt.id 
+            LEFT JOIN blocks b ON c.block_id = b.id 
+            LEFT JOIN panchayats p ON c.panchayat_id = p.id WHERE 1=1";
+    $params = [];
+    if (!empty($filters['district_id'])) { $sql .= " AND c.district_id = ?"; $params[] = $filters['district_id']; }
+    $sql .= " ORDER BY c.created_at DESC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
 /**
- * Generate fallback bio
+ * Universal Translation Wrapper
  */
-function generateFallbackBio($name, $village, $profession, $notes, $language = 'en') {
-    if ($language === 'hi') {
-        return "{$name} ग्राम पंचायत {$village} के निवासी हैं। वह एक {$profession} हैं। {$notes} उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।";
-    } else {
-        return "{$name} is a resident of {$village} Panchayat. He/She is a {$profession}. {$notes} Their main objective is rural development and overall progress of the panchayat.";
+if (!function_exists('__')) {
+    function __($text, $lang = null) {
+        if (empty($text)) return '';
+        global $current_language;
+        $lang = $lang ?? $current_language ?? $_SESSION['language'] ?? 'hi';
+        
+        static $translations = [];
+        if (empty($translations)) {
+            $translations = [
+                'hi' => [
+                    'Panchayat Election 2026' => 'पंचायत चुनाव 2026',
+                    'Enoxx News' => 'एनॉक्स न्यूज़',
+                    'Home' => 'होम',
+                    'Politics' => 'राजनीति',
+                    'Himachal' => 'हिमाचल',
+                    'Breaking' => 'ब्रेकिंग',
+                    'Search' => 'खोजें',
+                    'Candidates' => 'उम्मीदवार',
+                    'Select District' => 'जिला चुनें',
+                    'All Districts' => 'सभी जिले',
+                    'Select Block' => 'ब्लॉक चुनें',
+                    'All Blocks' => 'सभी ब्लॉक',
+                    'Select Panchayat' => 'पंचायत चुनें',
+                    'All Panchayats' => 'सभी पंचायतें',
+                    'Search by name or village...' => 'नाम या गांव से खोजें...',
+                    'Apply Filters' => 'फ़िल्टर लगाएं',
+                    'Reset' => 'रीसेट',
+                    'Panchayat List' => 'पंचायत सूची',
+                    'Total Candidates' => 'कुल उम्मीदवार',
+                    'View Candidates' => 'उम्मीदवार देखें',
+                    'Age' => 'आयु',
+                    'Village' => 'गांव',
+                    'Education' => 'शिक्षा',
+                    'Go Back' => 'वापस जाएं',
+                    'Verified Candidate' => 'सत्यापित उम्मीदवार',
+                    'Direct Line' => 'सीधा संपर्क',
+                    'Download Dossier' => 'प्रोफाइल डाउनलोड करें',
+                    'Download as PNG' => 'PNG के रूप में डाउनलोड करें',
+                    'Candidate Vision' => 'उम्मीदवार का विजन',
+                    'Verification Protocol' => 'सत्यापन प्रोटोकॉल',
+                    'Follow Candidate' => 'फॉलो करें',
+                    'Male' => 'पुरुष', 'Female' => 'महिला',
+                ]
+            ];
+        }
+
+        // Return manual translation if exists
+        if ($lang == 'hi' && isset($translations['hi'][$text])) {
+            return $translations['hi'][$text];
+        }
+
+        // AI Translation cache fallback
+        if ($lang === 'hi' && !preg_match('/[\x{0900}-\x{097F}]/u', $text)) {
+            if (!isset($_SESSION['ai_trans_cache'][$text])) {
+                $_SESSION['ai_trans_cache'][$text] = translateToHindi($text);
+            }
+            return $_SESSION['ai_trans_cache'][$text];
+        }
+        
+        return $text;
     }
 }
 
-/**
- * Format date nicely
- */
-function formatDate($date) {
-    return date('d M Y', strtotime($date));
+function lang_text($hi, $en, $lang = null) {
+    global $current_language;
+    $lang = $lang ?? $current_language ?? 'hi';
+    return ($lang === 'hi' && !empty($hi)) ? $hi : (!empty($en) ? $en : $hi);
 }
 
-// Create upload directory if not exists
-if (!is_dir(UPLOAD_DIR)) {
-    mkdir(UPLOAD_DIR, 0755, true);
+function createSlug($string) {
+    $string = strtolower(trim($string));
+    $string = preg_replace('/[^a-z0-9-]/', '-', $string);
+    return trim(preg_replace('/-+/', '-', $string), '-');
+}
+
+function generateAIBio($name, $village, $profession, $education, $relationType, $relationName, $shortNotes, $language = 'hi') {
+    if ($language === 'hi') {
+        $rel = ($relationType === 'father') ? 'पुत्र' : 'पत्नी';
+        $bio_hi = $name . ', ' . $village . ' गांव के निवासी, ' . $relationName . ' के ' . $rel . ' हैं। ';
+        if (!empty($profession)) $bio_hi .= 'पेशे से ' . $profession . ' हैं। ';
+        if (!empty($shortNotes)) $bio_hi .= $shortNotes . ' ';
+        $bio_hi .= 'पंचायत चुनाव 2026 में भाग ले रहे हैं।';
+        return $bio_hi;
+    }
+    return $name . ', resident of ' . $village . ', is contesting election 2026.';
+}
+
+function createUniqueSlug($pdo, $text, $table, $field = 'slug') {
+    $slug = createSlug($text);
+    $original = $slug; $counter = 1;
+    while (true) {
+        $stmt = $pdo->prepare("SELECT id FROM $table WHERE $field = ?");
+        $stmt->execute([$slug]);
+        if (!$stmt->fetch()) break;
+        $slug = $original . '-' . $counter++;
+    }
+    return $slug;
 }
 ?>
-
-<!-- Fatal error: Cannot redeclare translateToHindi() (previously declared in D:\xammp1\htdocs\election\index.php:15) in D:\xammp1\htdocs\election\config.php on line 293 -->

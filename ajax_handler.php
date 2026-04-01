@@ -143,6 +143,62 @@ try {
         ]);
         exit;
         
+    } elseif ($action === 'get_more_districts') {
+        $offset = (int)($_POST['offset'] ?? 12);
+        $lang = $_POST['lang'] ?? 'hi';
+        $limit = 12;
+        
+        // Fetch next batch of districts
+        $stmt = $pdo->prepare("SELECT d.*, 
+                (SELECT COUNT(*) FROM panchayats p 
+                 JOIN blocks b ON p.block_id = b.id 
+                 WHERE b.district_id = d.id) as panchayat_count,
+                (SELECT COUNT(*) FROM candidates c 
+                 JOIN panchayats p ON c.panchayat_id = p.id 
+                 JOIN blocks b ON p.block_id = b.id 
+                 WHERE b.district_id = d.id) as candidate_count
+                FROM districts d 
+                ORDER BY d.district_name ASC 
+                LIMIT ? OFFSET ?");
+        $stmt->execute([$limit, $offset]);
+        $districts = $stmt->fetchAll();
+        
+        // Check if there are more
+        $checkNext = $pdo->prepare("SELECT COUNT(*) FROM districts LIMIT 1 OFFSET ?");
+        $checkNext->execute([$offset + $limit]);
+        $hasMore = $checkNext->fetchColumn() > 0;
+        
+        $html = '';
+        foreach ($districts as $district) {
+            $d_name = ($lang === 'hi' && !empty($district['district_name_hi'])) ? $district['district_name_hi'] : $district['district_name'];
+            $html .= '
+            <a href="?district=' . $district['slug'] . '" class="group relative overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div class="p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-yellow-50 flex items-center justify-center text-brand-navy group-hover:bg-brand-navy group-hover:text-white transition-colors duration-300">
+                            <i data-lucide="map-pin" class="w-6 h-6"></i>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-wider group-hover:bg-yellow-100 group-hover:text-brand-navy transition-colors">
+                            ' . $district['panchayat_count'] . ' ' . ($lang === 'hi' ? 'पंचायतें' : 'Panchayats') . '
+                        </span>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-1 group-hover:text-brand-navy transition-colors">' . htmlspecialchars($d_name) . '</h3>
+                    <div class="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                        <i data-lucide="users" class="w-4 h-4 opacity-70"></i>
+                        <span>' . $district['candidate_count'] . ' ' . ($lang === 'hi' ? 'उम्मीदवार' : 'Candidates') . '</span>
+                    </div>
+                </div>
+            </a>';
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'html' => $html,
+            'count' => count($districts),
+            'hasMore' => $hasMore
+        ]);
+        exit;
+        
     } else {
         throw new Exception('Invalid action');
     }

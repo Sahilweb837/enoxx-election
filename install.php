@@ -15,72 +15,72 @@ $step = isset($_GET['step']) ? (int)$_GET['step'] : 1;
 $error = '';
 $success = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($step === 1) {
-        // Test database connection
-        try {
-            $testPDO = new PDO(
-                "mysql:host=" . $_POST['db_host'],
-                $_POST['db_user'],
-                $_POST['db_pass']
-            );
-            
-            // Create database if not exists
-            $testPDO->exec("CREATE DATABASE IF NOT EXISTS `" . $_POST['db_name'] . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            
-            // Update config file
-            $configContent = file_get_contents('config.php');
-            $configContent = preg_replace("/define\('DB_HOST', '.*'\)/", "define('DB_HOST', '" . addslashes($_POST['db_host']) . "')", $configContent);
-            $configContent = preg_replace("/define\('DB_USER', '.*'\)/", "define('DB_USER', '" . addslashes($_POST['db_user']) . "')", $configContent);
-            $configContent = preg_replace("/define\('DB_PASS', '.*'\)/", "define('DB_PASS', '" . addslashes($_POST['db_pass']) . "')", $configContent);
-            $configContent = preg_replace("/define\('DB_NAME', '.*'\)/", "define('DB_NAME', '" . addslashes($_POST['db_name']) . "')", $configContent);
-            
-            file_put_contents('config.php', $configContent);
-            
-            $success = 'Database configuration saved successfully!';
-            $step = 2;
-        } catch (PDOException $e) {
-            $error = 'Database connection failed: ' . $e->getMessage();
-        }
-    } elseif ($step === 2) {
-        // Import database schema
-        try {
-            $sql = file_get_contents('database.sql');
-            
-            // Split SQL into individual queries
-            $queries = array_filter(array_map('trim', explode(';', $sql)));
-            
-            foreach ($queries as $query) {
-                if (!empty($query)) {
-                    $pdo->exec($query);
-                }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($step === 1) {
+            // Test database connection
+            try {
+                $testPDO = new PDO(
+                    "mysql:host=" . $_POST['db_host'],
+                    $_POST['db_user'],
+                    $_POST['db_pass']
+                );
+                
+                // Create database if not exists
+                $testPDO->exec("CREATE DATABASE IF NOT EXISTS `" . $_POST['db_name'] . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                
+                // Update config file
+                $configContent = file_get_contents('config.php');
+                $configContent = preg_replace("/define\('DB_HOST', '.*'\)/", "define('DB_HOST', '" . addslashes($_POST['db_host']) . "')", $configContent);
+                $configContent = preg_replace("/define\('DB_USER', '.*'\)/", "define('DB_USER', '" . addslashes($_POST['db_user']) . "')", $configContent);
+                $configContent = preg_replace("/define\('DB_PASS', '.*'\)/", "define('DB_PASS', '" . addslashes($_POST['db_pass']) . "')", $configContent);
+                $configContent = preg_replace("/define\('DB_NAME', '.*'\)/", "define('DB_NAME', '" . addslashes($_POST['db_name']) . "')", $configContent);
+                
+                file_put_contents('config.php', $configContent);
+                
+                $success = 'Database configuration saved successfully!';
+                $step = 2;
+            } catch (PDOException $e) {
+                $error = 'Database connection failed: ' . $e->getMessage();
             }
-            
-            $success = 'Database tables created successfully!';
-            $step = 3;
-        } catch (PDOException $e) {
-            $error = 'Failed to create tables: ' . $e->getMessage();
-        }
-    } elseif ($step === 3) {
-        // Create admin user
-        try {
-            $username = $_POST['admin_user'];
-            $password = password_hash($_POST['admin_pass'], PASSWORD_DEFAULT);
-            $email = $_POST['admin_email'];
-            
-            $stmt = $pdo->prepare("INSERT INTO admin_users (username, password, email, full_name, role) VALUES (?, ?, ?, ?, 'super_admin')");
-            $stmt->execute([$username, $password, $email, $username]);
-            
-            // Create installation marker
-            file_put_contents(__DIR__ . '/.installed', date('Y-m-d H:i:s'));
-            
-            $success = 'Installation completed successfully!';
-            $step = 4;
-        } catch (PDOException $e) {
-            $error = 'Failed to create admin user: ' . $e->getMessage();
+        } elseif ($step === 2) {
+            // Import database schema
+            try {
+                $sql = file_get_contents('database.sql');
+                
+                // Split SQL into individual queries
+                $queries = array_filter(array_map('trim', explode(';', $sql)));
+                
+                foreach ($queries as $query) {
+                    if (!empty($query)) {
+                        $pdo->exec($query);
+                    }
+                }
+                
+                $success = 'Database tables created successfully!';
+                $step = 3;
+            } catch (PDOException $e) {
+                $error = 'Failed to create tables: ' . $e->getMessage();
+            }
+        } elseif ($step === 3) {
+            // Create admin user
+            try {
+                $username = $_POST['admin_user'];
+                $password = password_hash($_POST['admin_pass'], PASSWORD_DEFAULT);
+                $email = $_POST['admin_email'];
+                
+                $stmt = $pdo->prepare("INSERT INTO admin_users (username, password, email, full_name, role) VALUES (?, ?, ?, ?, 'super_admin')");
+                $stmt->execute([$username, $password, $email, $username]);
+                
+                // Create installation marker
+                file_put_contents(__DIR__ . '/.installed', date('Y-m-d H:i:s'));
+                
+                $success = 'Installation completed successfully!';
+                $step = 4;
+            } catch (PDOException $e) {
+                $error = 'Failed to create admin user: ' . $e->getMessage();
+            }
         }
     }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
