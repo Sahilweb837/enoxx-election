@@ -53,10 +53,11 @@ function translateToHindi($text) {
         $data = [
             'model' => 'gpt-4o-mini',
             'messages' => [
-                ['role' => 'system', 'content' => 'Translate to Hindi. Only return translation.'],
+                ['role' => 'system', 'content' => 'You are an accurate translator. Translate the entire English text into perfect Hindi. Do not summarize or omit any details. Maintain the same tone and length. Only return the translated text.'],
                 ['role' => 'user', 'content' => $text]
             ],
-            'temperature' => 0.3
+            'temperature' => 0.3,
+            'max_tokens' => 2000
         ];
 
         $ch = curl_init($url);
@@ -67,7 +68,7 @@ function translateToHindi($text) {
             'Content-Type: application/json',
             'Authorization: Bearer ' . OPENAI_API_KEY
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20); // Longer timeout for bios
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         
         $response = curl_exec($ch);
@@ -85,10 +86,18 @@ function translateToHindi($text) {
     // 2. Fallback: Google Translate Public (Unauthenticated)
     try {
         $url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=" . urlencode($text);
-        $res = file_get_contents($url);
+        $res = @file_get_contents($url);
         if ($res) {
             $json = json_decode($res, true);
-            if (isset($json[0][0][0])) return $json[0][0][0];
+            if (isset($json[0]) && is_array($json[0])) {
+                $fullTrans = "";
+                foreach ($json[0] as $chunk) {
+                    if (isset($chunk[0])) {
+                        $fullTrans .= $chunk[0];
+                    }
+                }
+                if (!empty($fullTrans)) return trim($fullTrans);
+            }
         }
     } catch (Exception $e) {
         // Log or ignore

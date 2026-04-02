@@ -172,7 +172,7 @@ if (isset($_POST['ajax_action'])) {
             exit;
         }
         
-        // Generate Bio
+        // Generate Bio with Multiple AI Suggestions
         if ($_POST['ajax_action'] === 'generate_bio') {
             $name = $_POST['name'] ?? '';
             $education = $_POST['education'] ?? '';
@@ -181,10 +181,72 @@ if (isset($_POST['ajax_action'])) {
             $age = $_POST['age'] ?? '';
             $gender = $_POST['gender'] ?? '';
             
+            if (empty($name)) {
+                echo json_encode(['success' => false, 'message' => 'Candidate name is required']);
+                exit;
+            }
+
+            // If OpenAI is available, generate 4 distinct options
+            if (defined('OPENAI_API_KEY') && !empty(OPENAI_API_KEY) && strpos(OPENAI_API_KEY, 'sk-proj-placeholder') === false) {
+                $prompt = "Generate 4 distinct, professional, and slightly different candidate biography options for an election portal.
+                Candidate Details:
+                - Name: $name
+                - Age: $age
+                - Gender: $gender
+                - Village: $village
+                - Education: $education
+                - Profession: $profession
+                
+                For each option, provide:
+                1. A perfect English version ('en').
+                2. A perfect, culturally appropriate Hindi version ('hi').
+                
+                Return ONLY a JSON array of 4 objects like this: [{\"en\": \"...\", \"hi\": \"...\"}, ...]";
+
+                $url = 'https://api.openai.com/v1/chat/completions';
+                $data = [
+                    'model' => 'gpt-4o-mini',
+                    'messages' => [
+                        ['role' => 'system', 'content' => 'You are an expert political communication assistant. You only output valid JSON arrays.'],
+                        ['role' => 'user', 'content' => $prompt]
+                    ],
+                    'temperature' => 0.7
+                ];
+
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . OPENAI_API_KEY
+                ]);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                
+                $response = curl_exec($ch);
+                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($http_code === 200) {
+                    $result = json_decode($response, true);
+                    $content = $result['choices'][0]['message']['content'] ?? '';
+                    // Strip potential markdown code blocks
+                    $content = preg_replace('/^```json\s*|\s*```$/', '', trim($content));
+                    $options = json_decode($content, true);
+
+                    if (is_array($options) && count($options) > 0) {
+                        echo json_encode(['success' => true, 'options' => $options]);
+                        exit;
+                    }
+                }
+            }
+            
+            // Fallback to basic generation if AI fails or key is missing
             $bioEn = generateBio($name, $education, $profession, $village, $age, $gender);
             $bioHi = translateToHindi($bioEn);
             
-            echo json_encode(['success' => true, 'bio_en' => $bioEn, 'bio_hi' => $bioHi]);
+            echo json_encode(['success' => true, 'options' => [['en' => $bioEn, 'hi' => $bioHi]]]);
             exit;
         }
         
@@ -221,10 +283,16 @@ if (isset($_POST['ajax_action'])) {
         // Add Block
         if ($_POST['ajax_action'] === 'add_block') {
             $district_id = (int)$_POST['district_id'];
+            $jila_parishad_id = (int)$_POST['jila_parishad_id'];
             $name_en = trim($_POST['name_en']);
             
             if (empty($name_en)) {
                 echo json_encode(['success' => false, 'message' => 'Block name is required!']);
+                exit;
+            }
+            
+            if (empty($jila_parishad_id)) {
+                echo json_encode(['success' => false, 'message' => 'Jila Parishad selection is required!']);
                 exit;
             }
             
@@ -238,8 +306,8 @@ if (isset($_POST['ajax_action'])) {
             }
             
             $slug = createUniqueSlug($pdo, $name_en, 'blocks', 'slug');
-            $stmt = $pdo->prepare("INSERT INTO blocks (district_id, block_name, block_name_hi, slug) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$district_id, $name_en, $name_hi, $slug]);
+            $stmt = $pdo->prepare("INSERT INTO blocks (district_id, jila_parishad_id, block_name, block_name_hi, slug) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$district_id, $jila_parishad_id, $name_en, $name_hi, $slug]);
             
             echo json_encode([
                 'success' => true,
@@ -299,6 +367,15 @@ if (isset($_POST['ajax_action'])) {
             echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
             exit;
         }
+
+        // Get Jila Parishads
+        if ($_POST['ajax_action'] === 'get_jila_parishads') {
+            $district_id = (int)$_POST['district_id'];
+            $stmt = $pdo->prepare("SELECT id, name, name_hi, constituency FROM jila_parishad WHERE district_id = ? ORDER BY name");
+            $stmt->execute([$district_id]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+            exit;
+        }
         
         // Check Duplicate Candidate
         if ($_POST['ajax_action'] === 'check_duplicate') {
@@ -352,7 +429,7 @@ if (isset($_POST['ajax_action'])) {
                 'video_message_url' => $_POST['video_message_url'] ?? '',
                 'interview_video_url' => $_POST['interview_video_url'] ?? '',
                 'mobile_number' => $_POST['mobile_number'] ?? '',
-                'transaction_id' => trim($_POST['transaction_id'] ?? '')
+                'transaction_id' => (!empty(trim($_POST['transaction_id'] ?? ''))) ? trim($_POST['transaction_id']) : null
             ];
             
             $result = saveCandidateToDatabase($pdo, $candidate_data);
@@ -721,6 +798,83 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         
         /* Tables */
         .candidates-table { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); overflow-x: auto; }
+        .dataTables_wrapper { padding: 20px; }
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; }
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .status-approved { background: #dcfce7; color: #15803d; }
+        .status-winner { background: #dcfce7; color: #15803d; border: 1px solid #15803d; }
+        
+        /* Bio Suggestion Cards */
+        .bio-option-card {
+            border: 2px solid #e2e8f0 !important;
+            border-radius: 16px !important;
+            padding: 24px !important;
+            cursor: default !important;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            background: white !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .bio-option-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+            border-color: var(--primary) !important;
+        }
+        .bio-option-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--primary);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .bio-option-card:hover::before {
+            opacity: 1;
+        }
+        .ai-badge {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* Toggle Switch Styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input:checked + .slider { background-color: var(--secondary); }
+        input:focus + .slider { box-shadow: 0 0 1px var(--secondary); }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .toggle-label { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 0.95em; color: var(--dark); cursor: pointer; }
+        
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 12px; background: #f8fafc; font-weight: 600; color: var(--dark); border-bottom: 2px solid var(--border); }
         td { padding: 12px; border-bottom: 1px solid var(--border); }
@@ -788,6 +942,15 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         /* Progress Indicator */
         .progress-indicator { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, var(--primary), var(--primary-light)); z-index: 9999; transform-origin: 0%; animation: loading 1s ease-in-out infinite; display: none; }
         @keyframes loading { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+        /* Session Expired Modal Styles */
+        .session-modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .session-modal.active { display: flex; animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .session-card { background: white; border-radius: 24px; width: 90%; max-width: 400px; padding: 40px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
+        .session-icon { w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-bounce; margin-bottom: 20px; width: 80px; height: 80px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .session-title { font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-bottom: 12px; font-family: 'Inter', sans-serif; }
+        .session-text { color: #64748b; margin-bottom: 30px; line-height: 1.6; }
+        .session-btn { background: #d97706; color: white; border: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: all 0.3s; width: 100%; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .session-btn:hover { background: #b45309; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(217,119,6,0.3); }
     </style>
 </head>
 <body>
@@ -803,6 +966,10 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             <button class="menu-item" onclick="showPage('addCandidate')"><i class="fas fa-user-plus"></i> Add Candidate</button>
             <button class="menu-item" onclick="showPage('candidatesList')"><i class="fas fa-list"></i> Candidates List</button>
             <button class="menu-item" onclick="showPage('verifications')"><i class="fas fa-shield-alt"></i> Verifications</button>
+            <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <button class="menu-item" style="color: #fbbf24;" onclick="triggerRefresh()"><i class="fas fa-sync-alt"></i> Refresh Session</button>
+                <button class="menu-item" style="color: #ef4444;" onclick="window.location.href='logout.php'"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
         </div>
     </div>
 
@@ -1005,10 +1172,28 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                                 <label><i class="fas fa-phone-alt"></i> Mobile Number *</label>
                                 <input type="tel" name="mobile_number" required placeholder="10 digit number" pattern="[0-9]{10}" maxlength="10">
                             </div>
-                            <div class="form-group">
-                                <label><i class="fas fa-receipt"></i> Transaction ID *</label>
-                                <input type="text" name="transaction_id" required placeholder="Enter Transaction ID">
-                                <small>Adds verification badge</small>
+                            <div class="form-group" style="grid-column: span 2; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-top: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                    <label class="toggle-label">
+                                        <i class="fas fa-certificate" style="color: var(--secondary);"></i>
+                                        Verify Candidate Now (Add Transaction ID)
+                                    </label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="verificationToggle" checked onchange="toggleVerificationField()">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div id="transactionFieldContainer" style="display: block;">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-receipt"></i> Transaction ID *</label>
+                                        <input type="text" name="transaction_id" id="transactionId" required placeholder="Enter Transaction ID (Manual)">
+                                        <small style="color: #64748b;"><i class="fas fa-info-circle"></i> This adds a blue verification tick to the candidate profile.</small>
+                                    </div>
+                                </div>
+                                <div id="unverifiedNotice" style="display: none; color: #64748b; font-size: 0.9em; padding: 10px; background: #fff; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                                    <i class="fas fa-user-clock"></i> Candidate will be submitted as <strong>Pending Verification</strong>. You can add the Transaction ID later to verify them.
+                                </div>
                             </div>
                         </div>
 
@@ -1128,9 +1313,46 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
 
     <!-- Modals -->
     <div class="modal" id="districtModal"><div class="modal-content"><div class="modal-header"><h3>Add New District</h3><button onclick="closeModal('district')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button></div><div class="modal-body"><input type="text" id="districtNameEn" placeholder="District Name (English)" style="width:100%; padding:12px; border:1px solid #e2e8f0; border-radius:8px;"><div id="districtModalMessage"></div></div><div class="modal-footer"><button class="modal-btn modal-btn-secondary" onclick="closeModal('district')">Cancel</button><button class="modal-btn modal-btn-primary" onclick="addDistrict()">Save</button></div></div></div>
-    <div class="modal" id="blockModal"><div class="modal-content"><div class="modal-header"><h3>Add New Block</h3><button onclick="closeModal('block')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button></div><div class="modal-body"><input type="text" id="blockDistrictName" readonly style="width:100%; padding:12px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:15px;"><input type="text" id="blockNameEn" placeholder="Block Name (English)" style="width:100%; padding:12px; border:1px solid #e2e8f0; border-radius:8px;"><div id="blockModalMessage"></div></div><div class="modal-footer"><button class="modal-btn modal-btn-secondary" onclick="closeModal('block')">Cancel</button><button class="modal-btn modal-btn-primary" onclick="addBlock()">Save</button></div></div></div>
+    <div class="modal" id="blockModal"><div class="modal-content"><div class="modal-header"><h3>Add New Block</h3><button onclick="closeModal('block')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button></div><div class="modal-body"><input type="text" id="blockDistrictName" readonly style="width:100%; padding:12px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:15px;"><div class="form-group" style="margin-bottom:15px;"><label style="display:block; margin-bottom:5px; font-weight:600;">Jila Parishad Constituency *</label><select id="blockJilaParishadId" style="width:100%; padding:12px; border:1px solid #e2e8f0; border-radius:8px;"><option value="">Select Jila Parishad</option></select></div><input type="text" id="blockNameEn" placeholder="Block Name (English)" style="width:100%; padding:12px; border:1px solid #e2e8f0; border-radius:8px;"><div id="blockModalMessage"></div></div><div class="modal-footer"><button class="modal-btn modal-btn-secondary" onclick="closeModal('block')">Cancel</button><button class="modal-btn modal-btn-primary" onclick="addBlock()">Save</button></div></div></div>
+    <div class="modal" id="bioSuggestionsModal" style="z-index: 2000;"><div class="modal-content" style="max-width: 800px; max-height: 90vh; display: flex; flex-direction: column;"><div class="modal-header"><h3>AI Bio Suggestions</h3><button onclick="document.getElementById('bioSuggestionsModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button></div><div class="modal-body" style="overflow-y: auto; flex-grow: 1; padding: 20px;"><p style="margin-bottom: 20px; color: #64748b;">We've generated 4 professional biography options. Choose the one that fits best.</p><div id="bioOptionsContainer" style="display: grid; grid-template-columns: 1fr; gap: 20px;"></div></div><div class="modal-footer"><button class="modal-btn modal-btn-secondary" onclick="document.getElementById('bioSuggestionsModal').classList.remove('active')">Cancel</button></div></div></div>
     <div class="modal" id="panchayatModal"><div class="modal-content"><div class="modal-header"><h3>Add New Panchayat</h3><button onclick="closeModal('panchayat')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button></div><div class="modal-body"><input type="text" id="panchayatDistrictName" readonly style="width:100%; padding:12px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:15px;"><input type="text" id="panchayatBlockName" readonly style="width:100%; padding:12px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:15px;"><input type="text" id="panchayatNameEn" placeholder="Panchayat Name (English)" style="width:100%; padding:12px; border:1px solid #e2e8f0; border-radius:8px;"><div id="panchayatModalMessage"></div></div><div class="modal-footer"><button class="modal-btn modal-btn-secondary" onclick="closeModal('panchayat')">Cancel</button><button class="modal-btn modal-btn-primary" onclick="addPanchayat()">Save</button></div></div></div>
     <div class="modal" id="transactionModal"><div class="modal-content"><div class="modal-header"><h3>Manage Transaction ID</h3><button onclick="closeModal('transaction')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button></div><div class="modal-body"><p>Candidate: <strong id="txnCandidateName"></strong></p><input type="hidden" id="txnCandidateId"><div class="form-group"><label>Transaction ID:</label><input type="text" id="txnId" placeholder="Enter Transaction ID" style="width:100%; padding:12px; border:1px solid #e2e8f0; border-radius:8px;"></div><div id="txnModalMessage"></div></div><div class="modal-footer"><button class="modal-btn modal-btn-secondary" onclick="closeModal('transaction')">Cancel</button><button class="modal-btn modal-btn-primary" onclick="saveTransactionId()">Save</button><button class="modal-btn" style="background:#ef4444; color:white;" onclick="deleteTransactionId()">Delete</button></div></div></div>
+
+    <!-- Refresh Confirmation Modal -->
+    <div class="modal" id="refreshConfirmModal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="background: #f59e0b;">
+                <h3>Confirm Refresh</h3>
+                <button onclick="closeModal('refreshConfirm')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 30px 20px;">
+                <div style="font-size: 3em; color: #f59e0b; margin-bottom: 20px;">
+                    <i class="fas fa-sync-alt fa-spin"></i>
+                </div>
+                <p style="font-size: 1.1em; color: #1e293b; margin-bottom: 10px;"><strong>Are you sure you want to refresh? / क्या आप वाकई रिफ्रेश करना चाहते हैं?</strong></p>
+                <p style="color: #64748b; font-size: 0.95em; line-height: 1.6;">
+                    Your current session will be closed and any unsaved data will be lost.<br>
+                    आपका वर्तमान सत्र बंद कर दिया जाएगा और कोई भी असुरक्षित डेटा खो जाएगा।
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: center;">
+                <button class="modal-btn modal-btn-secondary" onclick="closeModal('refreshConfirm')" style="flex: 1;">Stay on Page</button>
+                <button class="modal-btn" onclick="executeRefresh()" style="flex: 1; background: #f59e0b; color: white;">Yes, Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Expired Modal -->
+    <div class="session-modal" id="sessionExpiredModal">
+        <div class="session-card">
+            <div class="session-icon">
+                <i class="fas fa-user-clock"></i>
+            </div>
+            <h3 class="session-title">Session Expired</h3>
+            <p class="session-text">Your secure session has timed out due to inactivity. Please login again to continue your work.</p>
+            <button class="session-btn" onclick="window.location.href='index.php'">Login Again</button>
+        </div>
+    </div>
 
     <script>
         let currentDistrictId = null;
@@ -1162,7 +1384,77 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             if (event && event.currentTarget) event.currentTarget.classList.add('active');
         }
 
-        function openModal(type) {
+        // --- Session & Security Handlers ---
+        
+        // Catch 401 Unauthorized errors from fetch
+        const originalFetch = window.fetch;
+        window.fetch = function() {
+            return originalFetch.apply(this, arguments).then(response => {
+                if (response.status === 401) {
+                    showSessionExpired();
+                }
+                return response;
+            });
+        };
+
+        // Catch 401 Unauthorized errors from jQuery AJAX
+        $(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
+            if (jqXHR.status === 401) {
+                showSessionExpired();
+            }
+        });
+
+        function showSessionExpired() {
+            const modal = document.getElementById('sessionExpiredModal');
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // Refresh Confirmation Logic
+        function triggerRefresh() {
+            document.getElementById('refreshConfirmModal').classList.add('active');
+        }
+
+        function executeRefresh() {
+            // Close session logic - redirect to logout then login
+            window.location.href = 'logout.php';
+        }
+
+        // Intercept F5 and Ctrl+R
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+                triggerRefresh();
+            }
+        });
+
+        // Browser Refresh Guard
+        let formChanged = false;
+        const candidateForm = document.getElementById('candidateForm');
+        if (candidateForm) {
+            candidateForm.addEventListener('input', () => { formChanged = true; });
+        }
+        
+        window.onbeforeunload = function(e) {
+            if (formChanged) {
+                const msg = "You have unsaved changes. Refreshing will lose these changes and may close your session.";
+                e.returnValue = msg;
+                return msg;
+            }
+        };
+
+        // Reset change flag on successful submit
+        if (candidateForm) {
+            candidateForm.addEventListener('submit', function() {
+                window.onbeforeunload = null;
+            });
+        }
+
+        // --- Original Methods ---
+
+        async function openModal(type) {
             if (type === 'district') {
                 document.getElementById('districtModal').classList.add('active');
                 document.getElementById('districtNameEn').value = '';
@@ -1173,6 +1465,19 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 document.getElementById('blockDistrictName').value = currentDistrictName;
                 document.getElementById('blockNameEn').value = '';
                 document.getElementById('blockModalMessage').innerHTML = '';
+                
+                // Fetch Jila Parishads for this district
+                const jilaSelect = document.getElementById('blockJilaParishadId');
+                jilaSelect.innerHTML = '<option value="">Loading...</option>';
+                const formData = new URLSearchParams();
+                formData.append('ajax_action', 'get_jila_parishads');
+                formData.append('district_id', currentDistrictId);
+                const response = await fetch(window.location.href, { method: 'POST', body: formData });
+                const jilas = await response.json();
+                jilaSelect.innerHTML = '<option value="">Select Jila Parishad</option>';
+                jilas.forEach(j => {
+                    jilaSelect.innerHTML += `<option value="${j.id}">${j.name} - ${j.constituency}</option>`;
+                });
             } else if (type === 'panchayat') {
                 if (!currentBlockId) { alert('Please select a block first!'); return; }
                 document.getElementById('panchayatModal').classList.add('active');
@@ -1233,7 +1538,7 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             }
         }
 
-        // Generate bio automatically
+        // Generate bio automatically with multiple suggestions
         async function generateBioText() {
             const name = document.getElementById('nameEn').value.trim();
             const education = document.getElementById('education').value.trim();
@@ -1249,7 +1554,7 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             
             const btn = event.currentTarget;
             const originalContent = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
             btn.disabled = true;
             
             const formData = new URLSearchParams();
@@ -1265,14 +1570,31 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 const response = await fetch(window.location.href, { method: 'POST', body: formData });
                 const data = await response.json();
                 
-                if (data.success) {
-                    document.getElementById('bioEn').value = data.bio_en;
-                    document.getElementById('bioHi').value = data.bio_hi;
-                    btn.innerHTML = '<i class="fas fa-check"></i> Generated!';
-                    setTimeout(() => {
-                        btn.innerHTML = originalContent;
-                        btn.disabled = false;
-                    }, 2000);
+                if (data.success && data.options) {
+                    const container = document.getElementById('bioOptionsContainer');
+                    container.innerHTML = '';
+                    
+                    data.options.forEach((opt, index) => {
+                        const card = document.createElement('div');
+                        card.className = 'bio-option-card';
+                        card.style = 'border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; background: white;';
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="font-weight: 700; color: #1e293b;">Option ${index + 1}</span>
+                                <span class="ai-badge" style="background: #eff6ff; color: #3b82f6; padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 600;">AI Suggestion</span>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <p style="font-size: 0.95em; line-height: 1.6; color: #334155; margin-bottom: 10px;"><strong>English:</strong> ${opt.en}</p>
+                                <p style="font-size: 0.95em; line-height: 1.6; color: #334155;"><strong>Hindi:</strong> ${opt.hi}</p>
+                            </div>
+                            <button type="button" class="modal-btn modal-btn-primary" style="width: 100%;" onclick="selectBioOption('${btoa(unescape(encodeURIComponent(opt.en)))}', '${btoa(unescape(encodeURIComponent(opt.hi)))}')">Choose This Suggestion</button>
+                        `;
+                        container.appendChild(card);
+                    });
+                    
+                    document.getElementById('bioSuggestionsModal').classList.add('active');
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
                 } else {
                     alert('Failed to generate bio: ' + (data.message || 'Unknown error'));
                     btn.innerHTML = originalContent;
@@ -1283,6 +1605,44 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 alert('Error generating bio');
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
+            }
+        }
+
+        function selectBioOption(enB64, hiB64) {
+            const en = decodeURIComponent(escape(atob(enB64)));
+            const hi = decodeURIComponent(escape(atob(hiB64)));
+            document.getElementById('bioEn').value = en;
+            document.getElementById('bioHi').value = hi;
+            document.getElementById('bioSuggestionsModal').classList.remove('active');
+            
+            // Highlight the fields briefly
+            const highlight = (el) => {
+                el.style.borderColor = '#10b981';
+                el.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.2)';
+                setTimeout(() => {
+                    el.style.borderColor = '';
+                    el.style.boxShadow = '';
+                }, 2000);
+            };
+            highlight(document.getElementById('bioEn'));
+            highlight(document.getElementById('bioHi'));
+        }
+
+        function toggleVerificationField() {
+            const toggle = document.getElementById('verificationToggle');
+            const container = document.getElementById('transactionFieldContainer');
+            const input = document.getElementById('transactionId');
+            const notice = document.getElementById('unverifiedNotice');
+            
+            if (toggle.checked) {
+                container.style.display = 'block';
+                input.required = true;
+                notice.style.display = 'none';
+            } else {
+                container.style.display = 'none';
+                input.required = false;
+                input.value = '';
+                notice.style.display = 'block';
             }
         }
 
@@ -1610,7 +1970,10 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
 
         async function addBlock() {
             const nameEn = document.getElementById('blockNameEn').value.trim();
+            const jilaParishadId = document.getElementById('blockJilaParishadId').value;
+            
             if (!nameEn) { alert('Enter block name'); return; }
+            if (!jilaParishadId) { alert('Select Jila Parishad Constituency'); return; }
             
             const saveBtn = event.currentTarget; 
             setButtonLoading(saveBtn, true);
@@ -1618,6 +1981,7 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             const formData = new URLSearchParams();
             formData.append('ajax_action', 'add_block'); 
             formData.append('district_id', currentDistrictId); 
+            formData.append('jila_parishad_id', jilaParishadId); 
             formData.append('name_en', nameEn);
             
             try {
@@ -1633,6 +1997,7 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                     alert(data.message);
                 }
             } catch (error) {
+                console.error('Error adding block:', error);
                 setButtonLoading(saveBtn, false);
                 alert('Error adding block');
             }

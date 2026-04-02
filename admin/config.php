@@ -35,22 +35,7 @@ try {
 
 // Function to check if user is logged in
 function isLoggedIn() {
-    if (!isset($_SESSION['user_id']) || !isset($_SESSION['session_token'])) {
-        return false;
-    }
-    
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            SELECT * FROM user_sessions 
-            WHERE user_id = ? AND session_token = ? AND expires_at > NOW()
-        ");
-        $stmt->execute([$_SESSION['user_id'], $_SESSION['session_token']]);
-        
-        return $stmt->fetch() !== false;
-    } catch (Exception $e) {
-        return false;
-    }
+    return isset($_SESSION['user_id']) && isset($_SESSION['user_type']);
 }
 
 // Function to check if user is admin
@@ -61,6 +46,12 @@ function isAdmin() {
 // Function to redirect if not logged in
 function requireLogin() {
     if (!isLoggedIn()) {
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest' || isset($_POST['ajax_action'])) {
+            header('HTTP/1.1 401 Unauthorized');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Session expired. Please login again.']);
+            exit;
+        }
         header('Location: index.php');
         exit();
     }

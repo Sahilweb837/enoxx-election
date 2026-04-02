@@ -1,5 +1,5 @@
 <?php
-require_once 'admin/config.php';
+require_once 'config.php';
 requireLogin();
 
 $userId = $_SESSION['user_id'];
@@ -22,7 +22,7 @@ $stmt = $pdo->prepare("
 $stmt->execute([$userId]);
 $candidates = $stmt->fetchAll();
 
-include 'admin/includes/header.php';
+include 'includes/header.php';
 ?>
 
 <div class="page-header">

@@ -111,6 +111,63 @@ function isVerified($candidate) {
     return false;
 }
 
+// Get short description in proper language
+function getShortDescription($candidate) {
+    global $current_language;
+    if (!$candidate) return '';
+    
+    if ($current_language === 'hi') {
+        return !empty($candidate['short_notes_hi']) ? $candidate['short_notes_hi'] : ($candidate['short_notes_en'] ?? '');
+    } else {
+        return !empty($candidate['short_notes_en']) ? $candidate['short_notes_en'] : ($candidate['short_notes_hi'] ?? '');
+    }
+}
+
+// Get banner text (bio) in proper language
+function getBannerText($candidate) {
+    global $current_language;
+    if (!$candidate) return '';
+    
+    if ($current_language === 'hi') {
+        return !empty($candidate['bio_hi']) ? $candidate['bio_hi'] : ($candidate['bio_en'] ?? '');
+    } else {
+        return !empty($candidate['bio_en']) ? $candidate['bio_en'] : ($candidate['bio_hi'] ?? '');
+    }
+}
+
+// Get Panchayat name in proper language
+function getPanchayatName($panchayat) {
+    if (!$panchayat) return '';
+    global $current_language;
+    if ($current_language === 'hi') {
+        return !empty($panchayat['panchayat_name_hi']) ? $panchayat['panchayat_name_hi'] : ($panchayat['panchayat_name'] ?? '');
+    } else {
+        return !empty($panchayat['panchayat_name']) ? $panchayat['panchayat_name'] : ($panchayat['panchayat_name_hi'] ?? '');
+    }
+}
+
+// Get Block name in proper language
+function getBlockName($block) {
+    if (!$block) return '';
+    global $current_language;
+    if ($current_language === 'hi') {
+        return !empty($block['block_name_hi']) ? $block['block_name_hi'] : ($block['block_name'] ?? '');
+    } else {
+        return !empty($block['block_name']) ? $block['block_name'] : ($block['block_name_hi'] ?? '');
+    }
+}
+
+// Get District name in proper language
+function getDistrictName($district) {
+    if (!$district) return '';
+    global $current_language;
+    if ($current_language === 'hi') {
+        return !empty($district['district_name_hi']) ? $district['district_name_hi'] : ($district['district_name'] ?? '');
+    } else {
+        return !empty($district['district_name']) ? $district['district_name'] : ($district['district_name_hi'] ?? '');
+    }
+}
+
 // Slider / Animation helpers
 $pdo->query("SET NAMES utf8mb4");
 
@@ -143,7 +200,9 @@ if ($candidate_slug) {
     $context_title  = $view_candidate ? langs_text($view_candidate['candidate_name_hi'], $view_candidate['candidate_name_en']) : 'Candidate';
 
 } elseif ($search_query) {
-    $s = $pdo->prepare("SELECT c.*, p.panchayat_name, p.panchayat_name_hi, p.slug as panchayat_slug, b.slug as block_slug, d.slug as district_slug
+    $s = $pdo->prepare("SELECT c.*, p.panchayat_name, p.panchayat_name_hi, p.slug as panchayat_slug, 
+                        b.block_name, b.block_name_hi, b.slug as block_slug, 
+                        d.district_name, d.district_name_hi, d.slug as district_slug
                         FROM candidates c
                         LEFT JOIN panchayats p ON c.panchayat_id = p.id
                         LEFT JOIN blocks b ON c.block_id = b.id
@@ -155,32 +214,72 @@ if ($candidate_slug) {
     $context_title = 'Search: ' . htmlspecialchars($search_query);
 
 } elseif ($panchayat_slug) {
-    $pi = $pdo->prepare("SELECT id, panchayat_name, panchayat_name_hi FROM panchayats WHERE slug = ?");
-    $pi->execute([$panchayat_slug]); $pInfo = $pi->fetch();
+    $pi = $pdo->prepare("SELECT id, panchayat_name, panchayat_name_hi, block_id FROM panchayats WHERE slug = ?");
+    $pi->execute([$panchayat_slug]); 
+    $pInfo = $pi->fetch();
     if ($pInfo) {
-        $s = $pdo->prepare("SELECT c.* FROM candidates c WHERE c.panchayat_id = ? ORDER BY c.candidate_name_en");
+        // Get candidates for this panchayat
+        $s = $pdo->prepare("SELECT c.*, d.district_name, d.district_name_hi, d.slug as district_slug,
+                            b.block_name, b.block_name_hi, b.slug as block_slug,
+                            p.panchayat_name, p.panchayat_name_hi, p.slug as panchayat_slug
+                            FROM candidates c
+                            LEFT JOIN districts d ON c.district_id = d.id
+                            LEFT JOIN blocks b ON c.block_id = b.id
+                            LEFT JOIN panchayats p ON c.panchayat_id = p.id
+                            WHERE c.panchayat_id = ? ORDER BY c.candidate_name_en");
         $s->execute([$pInfo['id']]);
-        $items         = $s->fetchAll();
+        $items = $s->fetchAll();
+        
+        // Also get block info for breadcrumb
+        $bi = $pdo->prepare("SELECT id, block_name, block_name_hi, district_id FROM blocks WHERE id = ?");
+        $bi->execute([$pInfo['block_id']]);
+        $bInfo = $bi->fetch();
+        
+        if ($bInfo) {
+            $di = $pdo->prepare("SELECT id, district_name, district_name_hi FROM districts WHERE id = ?");
+            $di->execute([$bInfo['district_id']]);
+            $dInfo = $di->fetch();
+        }
+        
         $current_level = 'candidates';
         $context_title = langs_text($pInfo['panchayat_name_hi'], $pInfo['panchayat_name']);
     }
 } elseif ($block_slug) {
-    $bi = $pdo->prepare("SELECT id, block_name, block_name_hi FROM blocks WHERE slug = ?");
-    $bi->execute([$block_slug]); $bInfo = $bi->fetch();
+    $bi = $pdo->prepare("SELECT id, block_name, block_name_hi, district_id FROM blocks WHERE slug = ?");
+    $bi->execute([$block_slug]); 
+    $bInfo = $bi->fetch();
     if ($bInfo) {
-        $s = $pdo->prepare("SELECT p.*, (SELECT COUNT(*) FROM candidates c WHERE c.panchayat_id = p.id) as count FROM panchayats p WHERE p.block_id = ? ORDER BY p.panchayat_name");
+        // Get panchayats for this block with candidate count
+        $s = $pdo->prepare("SELECT p.*, 
+                            (SELECT COUNT(*) FROM candidates c WHERE c.panchayat_id = p.id) as candidate_count,
+                            (SELECT COUNT(*) FROM candidates c WHERE c.panchayat_id = p.id AND (c.transaction_id IS NOT NULL OR c.status IN ('verified', 'winner'))) as verified_count
+                            FROM panchayats p 
+                            WHERE p.block_id = ? 
+                            ORDER BY p.panchayat_name");
         $s->execute([$bInfo['id']]);
-        $items         = $s->fetchAll();
+        $items = $s->fetchAll();
+        
+        // Get district info
+        $di = $pdo->prepare("SELECT id, district_name, district_name_hi FROM districts WHERE id = ?");
+        $di->execute([$bInfo['district_id']]);
+        $dInfo = $di->fetch();
+        
         $current_level = 'panchayats';
         $context_title = langs_text($bInfo['block_name_hi'], $bInfo['block_name']);
     }
 } elseif ($district_slug) {
     $di = $pdo->prepare("SELECT id, district_name, district_name_hi FROM districts WHERE slug = ?");
-    $di->execute([$district_slug]); $dInfo = $di->fetch();
+    $di->execute([$district_slug]); 
+    $dInfo = $di->fetch();
     if ($dInfo) {
-        $s = $pdo->prepare("SELECT b.*, (SELECT COUNT(*) FROM panchayats p WHERE p.block_id = b.id) as count FROM blocks b WHERE b.district_id = ? ORDER BY b.block_name");
+        // Get blocks for this district with panchayat count
+        $s = $pdo->prepare("SELECT b.*, 
+                            (SELECT COUNT(*) FROM panchayats p WHERE p.block_id = b.id) as panchayat_count 
+                            FROM blocks b 
+                            WHERE b.district_id = ? 
+                            ORDER BY b.block_name");
         $s->execute([$dInfo['id']]);
-        $items         = $s->fetchAll();
+        $items = $s->fetchAll();
         $current_level = 'blocks';
         $context_title = langs_text($dInfo['district_name_hi'], $dInfo['district_name']);
     }
@@ -202,7 +301,7 @@ if ($candidate_slug) {
     $page_title = langs_text('सत्यापित प्रोफाइल','Verified Profiles');
     $context_title = $page_title;
 } else {
-    $items = $pdo->query("SELECT d.*, (SELECT COUNT(*) FROM blocks b WHERE b.district_id = d.id) as count FROM districts d ORDER BY d.district_name ASC LIMIT 12")->fetchAll();
+    $items = $pdo->query("SELECT d.*, (SELECT COUNT(*) FROM blocks b WHERE b.district_id = d.id) as block_count FROM districts d ORDER BY d.district_name ASC LIMIT 12")->fetchAll();
     $current_level = 'districts';
 }
 
@@ -332,10 +431,10 @@ tailwind.config = {
     .pulse { animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .glass-gold { 
-        background: rgba(255, 248, 242, 0.85); 
+        background: rgba(255, 248, 242, 0.95); 
         backdrop-filter: blur(20px); 
-        border: 1px solid rgba(120, 90, 0, 0.2); 
-        box-shadow: 0 20px 50px rgba(32, 27, 17, 0.15); 
+        border: 2px solid rgba(247, 190, 29, 0.3); 
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
     .shimmer-gold { 
         background: linear-gradient(135deg, #785a00 0%, #eab308 50%, #785a00 100%); 
@@ -361,22 +460,22 @@ tailwind.config = {
         vertical-align: middle;
     }
     .candidate-image {
-        width: 96px;
-        height: 96px;
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
         object-fit: cover;
         border: 3px solid #f7be1d;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     }
     .candidate-image-placeholder {
-        width: 96px;
-        height: 96px;
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
         background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: bold;
         color: #9ca3af;
         border: 3px solid #e5e7eb;
@@ -387,11 +486,10 @@ tailwind.config = {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%) rotate(-30deg);
-        opacity: 0.03;
+        opacity: 0.04;
         pointer-events: none;
-        z-index: 1;
-        width: 80%;
-        display: none; /* Only show in capture */
+        z-index: 10;
+        width: 70%;
     }
     .download-watermark img {
         width: 100%;
@@ -406,44 +504,45 @@ tailwind.config = {
             display: none !important;
         }
         .download-watermark {
-            opacity: 0.6;
+            opacity: 0.08;
             print-color-adjust: exact;
         }
     }
 
-    /* Download layout branding - Broadcast style */
-    #download-layout {
-        display: none;
-        width: 1200px;
-        padding: 50px;
-        background: #fff8f2;
+    /* Banner/Slider styling */
+    .candidate-banner {
+        background: linear-gradient(135deg, #f7be1d 0%, #eab308 100%);
         position: relative;
         overflow: hidden;
     }
-    .download-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 40px;
-        padding-bottom: 20px;
-        border-bottom: 4px solid #785a00;
+    .candidate-banner::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: slowRotate 20s linear infinite;
     }
-    .download-footer-banner {
-        margin-top: 40px;
-        padding-top: 20px;
-        border-top: 2px solid rgba(120, 90, 0, 0.1);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    @keyframes slowRotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
-    .broadcast-tag {
-        background: #785a00;
-        color: #ffffff;
-        padding: 5px 15px;
-        font-size: 14px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+    .banner-text {
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    .profile-card {
+        transition: all 0.3s ease;
+    }
+    .profile-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+    }
+    .panchayat-stats {
+        background: linear-gradient(135deg, rgba(247,190,29,0.1) 0%, rgba(247,190,29,0.05) 100%);
     }
 </style>
 </head>
@@ -465,8 +564,15 @@ tailwind.config = {
 
         <div class="flex items-center gap-4">
             <div class="flex bg-surface-container rounded-full p-1 border border-outline-variant/30">
-                <a href="?lang=en" class="px-3 py-1 rounded-full text-[10px] font-bold <?php echo $current_language==='en'?'bg-primary text-white shadow-sm':'text-on-surface/40'; ?>">EN</a>
-                <a href="?lang=hi" class="px-3 py-1 rounded-full text-[10px] font-bold <?php echo $current_language==='hi'?'bg-primary text-white shadow-sm':'text-on-surface/40'; ?>">हिं</a>
+                <?php 
+                $queryParams = $_GET;
+                $queryParams['lang'] = 'en';
+                $enLink = '?' . http_build_query($queryParams);
+                $queryParams['lang'] = 'hi';
+                $hiLink = '?' . http_build_query($queryParams);
+                ?>
+                <a href="<?php echo $enLink; ?>" class="px-3 py-1 rounded-full text-[10px] font-bold <?php echo $current_language==='en'?'bg-primary text-white shadow-sm':'text-on-surface/40'; ?>">EN</a>
+                <a href="<?php echo $hiLink; ?>" class="px-3 py-1 rounded-full text-[10px] font-bold <?php echo $current_language==='hi'?'bg-primary text-white shadow-sm':'text-on-surface/40'; ?>">हिं</a>
             </div>
             <button class="text-on-surface/60 hover:text-primary mt-1"><span class="material-symbols-outlined">search</span></button>
         </div>
@@ -485,6 +591,33 @@ tailwind.config = {
 
 <main class="pt-28 pb-12 px-4 max-w-7xl mx-auto min-h-screen">
 
+    <!-- Breadcrumb Navigation -->
+    <?php if ($current_level === 'panchayats' || $current_level === 'candidates'): ?>
+    <nav data-html2canvas-ignore="true" class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-8 overflow-x-auto whitespace-nowrap no-print">
+        <a href="index.php" class="hover:text-primary"><?php echo langs_text('होम', 'Home'); ?></a>
+        <span class="material-symbols-outlined text-xs">chevron_right</span>
+        <?php if ($dInfo): ?>
+        <a href="index.php?district=<?php echo $district_slug ?: ($dInfo['slug'] ?? ''); ?>" class="hover:text-primary">
+            <?php echo htmlspecialchars(getDistrictName($dInfo)); ?>
+        </a>
+        <span class="material-symbols-outlined text-xs">chevron_right</span>
+        <?php endif; ?>
+        <?php if ($bInfo): ?>
+        <a href="index.php?district=<?php echo $district_slug ?: ($dInfo['slug'] ?? ''); ?>&block=<?php echo $block_slug ?: ($bInfo['slug'] ?? ''); ?>" class="hover:text-primary">
+            <?php echo htmlspecialchars(getBlockName($bInfo)); ?>
+        </a>
+        <?php if ($current_level === 'candidates'): ?>
+        <span class="material-symbols-outlined text-xs">chevron_right</span>
+        <?php endif; ?>
+        <?php endif; ?>
+        <?php if ($current_level === 'candidates' && $pInfo): ?>
+        <span class="text-primary"><?php echo htmlspecialchars(getPanchayatName($pInfo)); ?></span>
+        <?php elseif ($current_level === 'panchayats'): ?>
+        <span class="text-primary"><?php echo htmlspecialchars($context_title); ?></span>
+        <?php endif; ?>
+    </nav>
+    <?php endif; ?>
+
     <?php if ($current_level === 'profile' && $view_candidate): ?>
     <nav data-html2canvas-ignore="true" class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-8 overflow-x-auto whitespace-nowrap no-print">
         <a href="index.php" class="hover:text-primary"><?php echo langs_text('होम', 'Home'); ?></a>
@@ -493,164 +626,181 @@ tailwind.config = {
         <span class="material-symbols-outlined text-xs">chevron_right</span>
         <a href="index.php?district=<?php echo $view_candidate['district_slug']; ?>&block=<?php echo $view_candidate['block_slug']; ?>" class="hover:text-primary"><?php echo htmlspecialchars(langs_text($view_candidate['block_name_hi'],$view_candidate['block_name'])); ?></a>
         <span class="material-symbols-outlined text-xs">chevron_right</span>
+        <a href="index.php?district=<?php echo $view_candidate['district_slug']; ?>&block=<?php echo $view_candidate['block_slug']; ?>&panchayat=<?php echo $view_candidate['panchayat_slug']; ?>" class="hover:text-primary"><?php echo htmlspecialchars(langs_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?></a>
+        <span class="material-symbols-outlined text-xs">chevron_right</span>
         <span class="text-primary"><?php echo htmlspecialchars(langs_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en'])); ?></span>
     </nav>
 
-    <div id="capture-area" style="position: relative; overflow: hidden; border-radius: 2.5rem;">
-        <!-- Download-only Layout (Hidden on screen, shown in capture) -->
-        <div id="download-layout" class="font-headline">
-            <div class="download-header">
-                <img src="uploads/official_enoxx_logo.png" alt="Enoxx Logo" style="height: 60px; width: auto;">
-                <div class="text-right">
-                    <div class="broadcast-tag"><?php echo langs_text('आधिकारिक चुनाव दस्तावेज़', 'Official Election Dossier'); ?></div>
-                    <div class="text-[10px] font-black text-primary mt-1 uppercase tracking-widest"><?php echo date('d M Y'); ?> • <?php echo langs_text('हिमाचल पंचायत चुनाव 2026', 'Himachal Panchayat Elections 2026'); ?></div>
-                </div>
-            </div>
-            
-            <!-- This will be populated with the card content during cloning -->
-            <div id="download-card-container"></div>
-            
-            <div class="download-footer-banner">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary text-3xl">verified_user</span>
-                    <div>
-                        <div class="text-[10px] font-black text-primary uppercase"><?php echo langs_text('डिजिटल रूप से प्रमाणित', 'Digitally Certified'); ?></div>
-                        <div class="text-[8px] font-bold text-primary/60 uppercase"><?php echo langs_text('संपादकीय टीम द्वारा एनॉक्स न्यूज़ नेटवर्क', 'By Editorial Team - Enoxx News Network'); ?></div>
-                    </div>
-                </div>
-                <div class="text-right opacity-40">
-                    <div class="text-[8px] font-black uppercase"><?php echo langs_text('दस्तावेज़ आईडी', 'Document ID'); ?>: ENX-<?php echo $view_candidate['id']; ?>-<?php echo strtoupper(bin2hex(random_bytes(4))); ?></div>
-                </div>
-            </div>
+    <div id="capture-area" style="position: relative; background-color: #fff8f2; border-radius: 2rem;">
+        <!-- Enoxx News Logo Watermark for Download -->
+        <div class="download-watermark">
+            <img src="uploads/official_enoxx_logo.png" alt="Enoxx Watermark">
         </div>
-
-        <!-- On-screen viewable card -->
-        <div id="main-card-display">
-            <!-- Enoxx News Logo Watermark for Download (Legacy, keeping for safety) -->
-            <div class="download-watermark" style="display: none;">
-                <img src="uploads/official_enoxx_logo.png" alt="Enoxx Watermark">
-            </div>
- 
 
         <?php 
         // Verification Logic: transaction_id makes a profile verified
         $isVerified = isVerified($view_candidate);
-        $candidateImage = getCandidateImage($view_candidate); // This will only return image if verified
+        $candidateImage = getCandidateImage($view_candidate);
+        $shortDescription = getShortDescription($view_candidate);
+        $bannerText = getBannerText($view_candidate);
         ?>
-        <div class="glass-gold rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative border border-primary-container/30">
-            
-            <?php if ($isVerified): ?>
-      
-            <?php endif; ?>
+        
+        <!-- Main Profile Card -->
 
-            <!-- Candidate Portrait Area (2/5) - Only show image for verified users -->
-            <div class="md:w-2/5 relative min-h-[450px] bg-on-surface overflow-hidden">
+        <!-- MAIN PROFILE CARD - Enhanced Glass Effect with Border -->
+        <div class="glass-gold rounded-2xl overflow-hidden flex flex-col md:flex-row relative border-2 border-primary/30 shadow-2xl profile-card">
+            
+            <!-- Candidate Portrait Area (2/5) - Fixed image stretching -->
+            <div class="md:w-2/5 relative min-h-[500px] bg-gradient-to-br from-on-surface/95 to-on-surface/70 overflow-hidden">
                 <?php if ($candidateImage && $isVerified): ?>
-                <img src="<?php echo $candidateImage; ?>" crossorigin="anonymous" class="absolute inset-0 w-full h-full object-cover" alt="Candidate">
+                <img src="<?php echo $candidateImage; ?>" crossorigin="anonymous" class="absolute inset-0 w-full h-full object-cover object-center" alt="Candidate" style="object-fit: cover; object-position: center top;">
                 <?php else: ?>
                 <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-tr from-on-surface/95 to-on-surface/40 overflow-hidden">
-                     <div class="relative z-10 w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center text-primary/10 font-headline font-black text-6xl shadow-2xl bg-on-surface/50">
+                    <div class="relative z-10 w-40 h-40 rounded-full border-4 border-primary/30 flex items-center justify-center text-primary/20 font-headline font-black text-7xl shadow-2xl bg-on-surface/50 backdrop-blur-sm">
                         <?php echo mb_substr(langs_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en']),0,1); ?>
                     </div>
                 </div>
                 <?php endif; ?>
                 
-                <div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-transparent to-transparent opacity-90"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-on-surface/90 via-on-surface/30 to-transparent opacity-90"></div>
                 
                 <div class="absolute bottom-10 left-8 right-8 text-white z-10">
-                    <div class="flex items-center gap-2 mb-4">
-                        <!-- <span class="px-3 py-1 bg-primary text-white text-[10px] font-black tracking-widest uppercase rounded-sm"><?php echo htmlspecialchars(langs_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?></span> -->
+                    <div class="flex flex-wrap items-center gap-3 mb-4">
+                        <span class="px-3 py-1.5 bg-primary/90 backdrop-blur-sm text-black text-[10px] font-black tracking-widest uppercase rounded-full shadow-lg">
+                            <?php echo htmlspecialchars(langs_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?>
+                        </span>
                         <?php if ($isVerified): ?>
-                        <!-- <span class="px-3 py-1 bg-white/10 backdrop-blur-md text-white text-[10px] font-bold tracking-widest uppercase rounded-sm"><?php echo langs_text('सत्यापित प्रोफाइल', 'Verified Profile'); ?></span> -->
+                        <span class="px-3 py-1.5 bg-white/20 backdrop-blur-md text-white text-[10px] font-black tracking-widest uppercase rounded-full flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[12px]">verified</span> 
+                            <?php echo langs_text('सत्यापित प्रोफाइल', 'Verified Profile'); ?>
+                        </span>
                         <?php endif; ?>
                     </div>
-                    <h1 class="text-4xl md:text-5xl font-headline font-black tracking-tighter leading-none mb-2">
+                    <h1 class="text-4xl md:text-5xl font-headline font-black tracking-tighter leading-none mb-3">
                         <span><?php echo htmlspecialchars(langs_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en'])); ?></span>
                         <?php if ($isVerified): ?>
-                        <span class="material-symbols-outlined text-[#1DA1F2] text-4xl align-middle fill-1" style="font-variation-settings: 'FILL' 1;">verified</span>
+                        <span class="material-symbols-outlined text-[#1DA1F2] text-4xl align-middle fill-1 inline-block ml-2" style="font-variation-settings: 'FILL' 1;">verified</span>
                         <?php endif; ?>
                     </h1>
-                    <h2 class="text-2xl font-headline font-medium opacity-80"><?php echo htmlspecialchars(langs_text($view_candidate['candidate_name_hi'], '')); ?></h2>
+                    <?php if (!empty($view_candidate['candidate_name_hi']) && $current_language === 'en'): ?>
+                    <h2 class="text-xl font-headline font-medium opacity-80"><?php echo htmlspecialchars($view_candidate['candidate_name_hi']); ?></h2>
+                    <?php elseif (!empty($view_candidate['candidate_name_en']) && $current_language === 'hi'): ?>
+                    <h2 class="text-xl font-headline font-medium opacity-80"><?php echo htmlspecialchars($view_candidate['candidate_name_en']); ?></h2>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <!-- Detailed Credentials (3/5) -->
-            <div class="md:w-3/5 p-10 flex flex-col justify-between space-y-10">
+            <div class="md:w-3/5 p-8 md:p-10 flex flex-col justify-between space-y-8">
                 <div class="relative">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
                         <?php if ($isVerified): ?>
                         <div class="flex items-center gap-4">
-                            
+                            <div class="bg-primary/10 rounded-full p-2">
+                                <img src="uploads/official_enoxx_logo.png" alt="Enoxx Logo" class="h-10 w-auto">
+                            </div>
                             <div>
-       <img src="uploads/official_enoxx_logo.png" alt="Enoxx Logo" class="h-8 w-auto">                                <div class="bg- -container text-white text-[0px] font-black uppercase px-3 py-1   l inline-block mt-1">
-                                    </div>
+                                <div class="text-[8px] font-black text-primary uppercase tracking-widest"><?php echo langs_text('प्रीमियम सत्यापन', 'Premium Verification'); ?></div>
+                                <div class="text-[9px] font-bold text-on-surface/60">Enoxx News Editorial</div>
                             </div>
                         </div>
                         <?php else: ?>
                         <div class="flex items-center gap-4">
-                        
-                             <div class="h-6 w-px bg-outline/20"></div>
-                             <div class="text-[10px] font-black text-primary/40 uppercase tracking-widest"><?php echo langs_text('चुनाव रजिस्ट्री 2026', 'Election Registry 2026'); ?></div>
+                            <div class="bg-surface-container rounded-full p-2">
+                                <img src="uploads/official_enoxx_logo.png" alt="Enoxx Logo" class="h-8 w-auto opacity-50">
+                            </div>
+                            <div class="h-6 w-px bg-outline/20"></div>
+                            <div class="text-[9px] font-black text-primary/40 uppercase tracking-widest"><?php echo langs_text('चुनाव रजिस्ट्री 2026', 'Election Registry 2026'); ?></div>
                         </div>
                         <?php endif; ?>
                         
-                        
+                        <div class="px-4 py-2 bg-primary/5 rounded-full border border-primary/20">
+                            <span class="text-[9px] font-black uppercase tracking-wider text-primary"><?php echo getStatusText($view_candidate['status']); ?></span>
+                        </div>
                     </div>
+
+                    <!-- Profile Biography Section (New Placement) -->
+                    <?php if (!empty($bannerText)): ?>
+                    <div class="mb-8 p-6 bg-primary/5 rounded-2xl border border-primary/10 relative">
+                        <span class="material-symbols-outlined absolute -top-3 -left-3 bg-primary text-white p-1 rounded-lg text-lg">format_quote</span>
+                        <p class="text-sm md:text-base font-headline font-bold text-on-surface/80 leading-relaxed italic">
+                            <?php echo htmlspecialchars($bannerText); ?>
+                        </p>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="grid grid-cols-2 gap-y-8 gap-x-10">
                         <div class="space-y-1">
-                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60"><?php echo langs_text('जिला', 'District'); ?></label>
+                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">location_on</span>
+                                <?php echo langs_text('जिला', 'District'); ?>
+                            </label>
                             <p class="text-xl font-headline font-black text-on-surface"><?php echo htmlspecialchars(langs_text($view_candidate['district_name_hi'],$view_candidate['district_name'])); ?></p>
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60"><?php echo langs_text('ब्लॉक', 'Block'); ?></label>
+                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">grid_view</span>
+                                <?php echo langs_text('ब्लॉक', 'Block'); ?>
+                            </label>
                             <p class="text-xl font-headline font-black text-on-surface"><?php echo htmlspecialchars(langs_text($view_candidate['block_name_hi'],$view_candidate['block_name'])); ?></p>
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60"><?php echo langs_text('पंचायत', 'Panchayat'); ?></label>
+                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">home</span>
+                                <?php echo langs_text('पंचायत', 'Panchayat'); ?>
+                            </label>
                             <p class="text-xl font-headline font-black text-on-surface"><?php echo htmlspecialchars(langs_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?></p>
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60"><?php echo langs_text('गाँव', 'Village'); ?></label>
+                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">landscape</span>
+                                <?php echo langs_text('गाँव', 'Village'); ?>
+                            </label>
                             <p class="text-xl font-headline font-black text-on-surface"><?php echo htmlspecialchars(langs_text($view_candidate['village_hi'], $view_candidate['village'])); ?></p>
                         </div>
-                        <div class="space-y-1 border-t border-primary/10 pt-6">
-                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60"><?php echo langs_text('आयु / लिंग', 'Age / Gender'); ?></label>
-                            <p class="text-lg font-body font-black text-on-surface"><?php echo $view_candidate['age']; ?>, <?php echo getGenderText($view_candidate['gender']); ?></p>
+                        <div class="space-y-1 border-t border-primary/15 pt-6">
+                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">cake</span>
+                                <?php echo langs_text('आयु / लिंग', 'Age / Gender'); ?>
+                            </label>
+                            <p class="text-lg font-body font-black text-on-surface"><?php echo $view_candidate['age']; ?> <?php echo langs_text('वर्ष', 'yrs'); ?>, <?php echo getGenderText($view_candidate['gender']); ?></p>
                         </div>
-                        <div class="space-y-1 border-t border-primary/10 pt-6">
-                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60"><?php echo langs_text('शिक्षा', 'Education'); ?></label>
+                        <div class="space-y-1 border-t border-primary/15 pt-6">
+                            <label class="text-[9px] uppercase tracking-widest font-black text-primary/60 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">school</span>
+                                <?php echo langs_text('शिक्षा', 'Education'); ?>
+                            </label>
                             <p class="text-lg font-body font-black text-on-surface"><?php echo htmlspecialchars(langs_text($view_candidate['education_hi'], $view_candidate['education']) ?: '—'); ?></p>
                         </div>
                     </div>
 
-                    <!-- Short Description Section (Central) -->
-                    <?php 
-                    $shortNote = !empty($view_candidate['short_notes_hi']) ? $view_candidate['short_notes_hi'] : ($view_candidate['short_notes_en'] ?? '');
-                    if(!empty($shortNote)): 
-                    ?>
-                    <div class="mt-8 bg-black/5 p-8 rounded-3xl border-l-[6px] border-primary relative overflow-hidden">
+                    <!-- Short Description Section - Uses short_notes_en/short_notes_hi based on language -->
+                    <?php if(!empty($shortDescription)): ?>
+                    <div class="mt-10 bg-black/5 p-8 rounded-2xl border-l-[6px] border-primary relative overflow-hidden">
                         <div class="absolute -right-4 top-1/2 -translate-y-1/2 text-black/[0.03] font-headline font-black text-8xl rotate-12 pointer-events-none uppercase tracking-tighter"><?php echo langs_text('परिचय', 'ABOUT'); ?></div>
-                        <label class="text-[10px] uppercase tracking-widest font-black text-primary mb-3 block opacity-80"><?php echo langs_text('संक्षिप्त परिचय / घोषणापत्र', 'CANDIDATE SHORT DESCRIPTION'); ?></label>
+                        <label class="text-[10px] uppercase tracking-widest font-black text-primary mb-3 block opacity-80 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[14px]">description</span>
+                            <?php echo langs_text('संक्षिप्त परिचय', 'Candidate Introduction'); ?>
+                        </label>
                         <p class="text-base font-body font-bold text-on-surface leading-relaxed relative z-10">
-                            "<?php echo nl2br(htmlspecialchars($shortNote)); ?>"
+                            "<?php echo nl2br(htmlspecialchars($shortDescription)); ?>"
                         </p>
                     </div>
                     <?php endif; ?>
                 </div>
-
-                <!-- Digital Trust Signature (Privacy Optimized) -->
-           
             </div>
         </div>
 
-        </div> <!-- End of #main-card-display -->
-    </div> <!-- End of #capture-area -->
+        <!-- Footer certification line for download -->
+        <div class="mt-6 pt-4 border-t-2 border-primary/20 text-center text-[9px] text-primary/50 uppercase tracking-widest font-black">
+            <?php echo langs_text('यह दस्तावेज़ एनॉक्स न्यूज़ नेटवर्क द्वारा डिजिटल रूप से प्रमाणित है', 'This document is digitally certified by Enoxx News Network'); ?>
+        </div>
+    </div>
 
     <!-- Actions (Outside capture area) -->
     <div data-html2canvas-ignore="true" class="mt-8 flex flex-wrap gap-4 no-print">
         <button onclick="downloadDossier()" class="flex-1 min-w-[200px] shimmer-gold text-white font-headline font-bold py-4 rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3">
-            <span class="material-symbols-outlined">download</span> <?php echo langs_text('डाउनलोड करें (PNG)', 'Download(PNG)'); ?>
+            <span class="material-symbols-outlined">download</span> <?php echo langs_text('डाउनलोड करें (PNG)', 'Download (PNG)'); ?>
         </button>
         <a href="index.php" class="flex-1 min-w-[200px] bg-black text-white font-headline font-bold py-4 rounded-2xl text-center hover:bg-gray-800 transition active:scale-95 flex items-center justify-center gap-3">
             <span class="material-symbols-outlined text-sm">home</span> <?php echo langs_text('डैशबोर्ड पर लौटें', 'Return to Dashboard'); ?>
@@ -664,64 +814,156 @@ tailwind.config = {
         ov.style.display = 'flex';
         
         try {
-            // Standard Pre-loading for local assets
+            // Pre-load all images
             const images = el.querySelectorAll('img');
             const imagePromises = Array.from(images).map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => {
+                if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+                return new Promise((resolve) => {
                     img.onload = resolve;
                     img.onerror = resolve;
+                    if (img.complete) resolve();
                 });
             });
             
             await Promise.all(imagePromises);
-            await new Promise(r => setTimeout(r, 600)); // Buffer for rendering
+            await new Promise(r => setTimeout(r, 500));
             
             const canvas = await html2canvas(el, { 
-                scale: 2, 
+                scale: 2.5, 
                 backgroundColor: '#fff8f2', 
                 useCORS: true,
                 logging: false,
                 allowTaint: false,
                 onclone: function(clonedDoc, element) {
-                    const downloadLayout = clonedDoc.getElementById('download-layout');
-                    const mainDisplay = clonedDoc.getElementById('main-card-display');
-                    const cardContainer = clonedDoc.getElementById('download-card-container');
-                    
-                    if (downloadLayout && mainDisplay && cardContainer) {
-                        // Move the glass-gold card from main display to download layout during capture
-                        const card = mainDisplay.querySelector('.glass-gold');
-                        if (card) {
-                            // Clone the card so we don't destroy the original during the process
-                            const cardClone = card.cloneNode(true);
-                            // Adjust card styling for the larger banner layout if needed
-                            cardClone.style.boxShadow = '0 30px 60px rgba(0,0,0,0.1)';
-                            cardContainer.appendChild(cardClone);
-                            
-                            // Swap visibility
-                            downloadLayout.style.display = 'block';
-                            mainDisplay.style.display = 'none';
-                        }
+                    const watermark = clonedDoc.querySelector('.download-watermark');
+                    if (watermark) {
+                        watermark.style.display = 'block';
+                        watermark.style.opacity = '0.05';
                     }
                 }
             });
             
-            const a = document.createElement('a');
-            a.download = `ENOXX_ENX_CANDIDATE_<?php echo $view_candidate['id']; ?>_<?php echo date('Y-m-d'); ?>.png`;
-            a.href = canvas.toDataURL('image/png');
-            a.click();
+            const link = document.createElement('a');
+            link.download = `ENOXX_CANDIDATE_<?php echo $view_candidate['id']; ?>_<?php echo date('Y-m-d'); ?>.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
         } catch(e) { 
             console.error(e);   
             alert('<?php echo langs_text('डाउनलोड में त्रुटि', 'Error generating document'); ?>'); 
-        }
-        finally { 
+        } finally { 
             ov.style.display = 'none'; 
         }
     }
     </script>
 
+    <?php elseif ($current_level === 'panchayats'): ?>
+    <!-- PANCHAYATS LIST VIEW (Block Level) -->
+    <div class="mb-12">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-5xl font-headline font-black uppercase tracking-tighter text-on-surface mb-2"><?php echo htmlspecialchars($context_title); ?></h1>
+                <p class="text-primary text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                    <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                    <?php echo count($items); ?> <?php echo langs_text('पंचायतें', 'Panchayats'); ?>
+                </p>
+            </div>
+            <?php if ($dInfo): ?>
+            <div class="px-4 py-2 bg-primary/10 rounded-full">
+                <span class="text-[10px] font-black uppercase text-primary"><?php echo htmlspecialchars(getDistrictName($dInfo)); ?></span>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <?php foreach ($items as $panchayat): 
+            $panchayatLink = "index.php?district=" . ($district_slug ?? ($dInfo['slug'] ?? '')) . "&block=" . $block_slug . "&panchayat=" . $panchayat['slug'] . "&lang=" . $current_language;
+            $panchayatName = getPanchayatName($panchayat);
+            $candidateCount = $panchayat['candidate_count'] ?? 0;
+            $verifiedCount = $panchayat['verified_count'] ?? 0;
+        ?>
+        <a href="<?php echo $panchayatLink; ?>" class="news-card rounded-3xl p-6 group hover:border-primary/30 transition-all duration-300">
+            <div class="flex items-start justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-3xl">cottage</span>
+                </div>
+                <div class="flex flex-col items-end">
+                    <?php if ($verifiedCount > 0): ?>
+                    <span class="text-[9px] font-black bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[10px]">verified</span> <?php echo $verifiedCount; ?> <?php echo langs_text('सत्यापित', 'Verified'); ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <h3 class="font-headline font-black text-xl text-on-surface group-hover:text-primary transition-all leading-tight mb-2">
+                <?php echo htmlspecialchars($panchayatName); ?>
+            </h3>
+            <div class="flex items-center gap-3 mt-4 text-[9px] font-black uppercase tracking-wider">
+                <span class="flex items-center gap-1 text-primary/60">
+                    <span class="material-symbols-outlined text-[12px]">how_to_reg</span>
+                    <?php echo $candidateCount; ?> <?php echo langs_text('उम्मीदवार', 'Candidates'); ?>
+                </span>
+                <span class="w-1 h-1 rounded-full bg-primary/30"></span>
+                <span class="flex items-center gap-1 text-primary/60 group-hover:text-primary transition-colors">
+                    <?php echo langs_text('प्रोफाइल देखें', 'View Profiles'); ?>
+                    <span class="material-symbols-outlined text-[12px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </span>
+            </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
+
+    <?php elseif ($current_level === 'blocks'): ?>
+    <!-- BLOCKS LIST VIEW (District Level) -->
+    <div class="mb-12">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-5xl font-headline font-black uppercase tracking-tighter text-on-surface mb-2"><?php echo htmlspecialchars($context_title); ?></h1>
+                <p class="text-primary text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                    <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                    <?php echo count($items); ?> <?php echo langs_text('ब्लॉक', 'Blocks'); ?>
+                </p>
+            </div>
+            <?php if ($dInfo): ?>
+            <div class="px-4 py-2 bg-primary/10 rounded-full">
+                <span class="text-[10px] font-black uppercase text-primary"><?php echo htmlspecialchars(getDistrictName($dInfo)); ?></span>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <?php foreach ($items as $block): 
+            $blockLink = "index.php?district=" . $district_slug . "&block=" . $block['slug'] . "&lang=" . $current_language;
+            $blockName = getBlockName($block);
+            $panchayatCount = $block['panchayat_count'] ?? 0;
+        ?>
+        <a href="<?php echo $blockLink; ?>" class="news-card rounded-3xl p-6 group hover:border-primary/30 transition-all duration-300">
+            <div class="flex items-start justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-3xl">grid_view</span>
+                </div>
+            </div>
+            <h3 class="font-headline font-black text-xl text-on-surface group-hover:text-primary transition-all leading-tight mb-2">
+                <?php echo htmlspecialchars($blockName); ?>
+            </h3>
+            <div class="flex items-center gap-3 mt-4 text-[9px] font-black uppercase tracking-wider">
+                <span class="flex items-center gap-1 text-primary/60">
+                    <span class="material-symbols-outlined text-[12px]">cottage</span>
+                    <?php echo $panchayatCount; ?> <?php echo langs_text('पंचायतें', 'Panchayats'); ?>
+                </span>
+                <span class="w-1 h-1 rounded-full bg-primary/30"></span>
+                <span class="flex items-center gap-1 text-primary/60 group-hover:text-primary transition-colors">
+                    <?php echo langs_text('पंचायतें देखें', 'View Panchayats'); ?>
+                    <span class="material-symbols-outlined text-[12px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </span>
+            </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
+
     <?php else: ?>
-    <!-- PORTAL DASHBOARD -->
+    <!-- PORTAL DASHBOARD (Districts or Candidates) -->
     <div class="mb-12">
         <h1 class="text-5xl font-headline font-black uppercase tracking-tighter text-on-surface mb-2"><?php echo htmlspecialchars($context_title); ?></h1>
         <p class="text-primary text-xs font-black uppercase tracking-widest flex items-center gap-2">
@@ -749,7 +991,7 @@ tailwind.config = {
             ?>
             <a href="<?php echo $fvLink; ?>" class="group block relative bg-black rounded-3xl overflow-hidden aspect-[4/5] shadow-2xl hover:-translate-y-2 transition-all duration-500">
                 <?php if ($fvImage): ?>
-                <img src="<?php echo $fvImage; ?>" alt="Candidate" class="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
+                <img src="<?php echo $fvImage; ?>" alt="Candidate" class="absolute inset-0 w-full h-full object-cover object-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
                 <?php else: ?>
                 <div class="absolute inset-0 bg-gradient-to-tr from-on-surface to-primary/20 flex items-center justify-center">
                     <span class="text-white/10 font-black text-9xl"><?php echo mb_substr(langs_text($fv['candidate_name_hi'],$fv['candidate_name_en']),0,1); ?></span>
@@ -835,27 +1077,28 @@ tailwind.config = {
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         <?php foreach ($items as $item): 
-            $slug = $item['slug'] ?? null;
-            $name_hi = $item['district_name_hi'] ?? $item['block_name_hi'] ?? $item['panchayat_name_hi'] ?? $item['candidate_name_hi'] ?? '';
-            $name_en = $item['district_name'] ?? $item['block_name'] ?? $item['panchayat_name'] ?? $item['candidate_name_en'] ?? '';
-            $link = 'index.php?';
-            if($current_level=='districts') $link .= "district=$slug";
-            elseif($current_level=='blocks') $link .= "district=$district_slug&block=$slug";
-            elseif($current_level=='panchayats') $link .= "district=$district_slug&block=$block_slug&panchayat=$slug";
-            elseif($current_level=='candidates') $link .= "candidate=$slug";
-            $link .= "&lang=$current_language";
-
-            if($current_level === 'candidates'):
-                // Unified Verification Logic
+            if($current_level === 'districts'):
+                $slug = $item['slug'];
+                $name_hi = $item['district_name_hi'] ?? '';
+                $name_en = $item['district_name'] ?? '';
+                $link = "index.php?district=$slug&lang=$current_language";
+                $count = $item['block_count'] ?? 0;
+                $countLabel = langs_text('ब्लॉक', 'Blocks');
+                $icon = 'map';
+            elseif($current_level === 'candidates'):
+                $slug = $item['slug'] ?? null;
+                $name_hi = $item['candidate_name_hi'] ?? '';
+                $name_en = $item['candidate_name_en'] ?? '';
+                $link = "index.php?candidate=$slug&lang=$current_language";
                 $isV = isVerified($item);
-                $candidateImage = getCandidateImage($item); // This will only return image if verified
+                $candidateImage = getCandidateImage($item);
         ?>
         <a href="<?php echo $link; ?>" class="news-card rounded-[2rem] p-6 flex flex-col items-center text-center group">
             <div class="relative mb-6">
                 <?php if($candidateImage && $isV): ?>
-                <img src="<?php echo $candidateImage; ?>" class="candidate-image" alt="Candidate Photo">
+                <img src="<?php echo $candidateImage; ?>" class="candidate-image" alt="Candidate Photo" style="width: 100px; height: 100px; object-fit: cover; object-position: center;">
                 <?php else: ?>
-                <div class="candidate-image-placeholder">
+                <div class="candidate-image-placeholder" style="width: 100px; height: 100px;">
                     <?php echo mb_substr(langs_text($name_hi,$name_en),0,1); ?>
                 </div>
                 <?php endif; ?>
@@ -867,7 +1110,7 @@ tailwind.config = {
                 <?php endif; ?>
             </div>
             <h3 class="font-headline font-black text-lg text-on-surface group-hover:text-primary transition-all uppercase leading-tight"><?php echo htmlspecialchars(langs_text($name_hi,$name_en)); ?></h3>
-            <p class="text-[10px] font-bold text-primary/40 uppercase tracking-widest mt-1"><?php echo htmlspecialchars($item['village']??''); ?></p>
+            <p class="text-[10px] font-bold text-primary/40 uppercase tracking-widest mt-1"><?php echo htmlspecialchars($item['panchayat_name'] ?? $item['village'] ?? ''); ?></p>
             <div class="mt-4 flex gap-2 flex-wrap justify-center">
                 <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-white/5 text-white/80 border border-white/10"><?php echo getStatusText($item['status']); ?></span>
                 <?php if($isV): ?>
@@ -881,13 +1124,22 @@ tailwind.config = {
                 <span class="material-symbols-outlined text-xs">arrow_forward</span>
             </div>
         </a>
-        <?php else: ?>
+        <?php 
+            else:
+                $slug = $item['slug'];
+                $name_hi = $item['district_name_hi'] ?? $item['block_name_hi'] ?? '';
+                $name_en = $item['district_name'] ?? $item['block_name'] ?? '';
+                $link = "index.php?district=$district_slug&block=$slug&lang=$current_language";
+                $count = $item['panchayat_count'] ?? 0;
+                $countLabel = langs_text('पंचायतें', 'Panchayats');
+                $icon = 'domain';
+            ?>
         <a href="<?php echo $link; ?>" class="news-card rounded-[2rem] p-8 group">
             <div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface/20 group-hover:bg-primary group-hover:text-white transition-all mb-4 shadow-sm border border-primary/5">
-                <span class="material-symbols-outlined"><?php echo $levelIcon[$current_level]; ?></span>
+                <span class="material-symbols-outlined"><?php echo $icon; ?></span>
             </div>
             <h3 class="text-2xl font-headline font-black text-on-surface group-hover:text-primary transition uppercase tracking-tighter leading-none"><?php echo htmlspecialchars(langs_text($name_hi,$name_en)); ?></h3>
-            <?php if(isset($item['count'])): ?><p class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest mt-2"><?php echo number_format($item['count']); ?> <?php echo langs_text('रिकॉर्ड मिले','Records Found'); ?></p><?php endif; ?>
+            <p class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest mt-2"><?php echo number_format($count); ?> <?php echo $countLabel; ?></p>
             <div class="mt-6 text-[9px] font-black text-primary uppercase tracking-widest border-b border-transparent group-hover:border-primary inline-block"><?php echo langs_text('रजिस्ट्री देखें →','Explore Registry →'); ?></div>
         </a>
         <?php endif; endforeach; ?>

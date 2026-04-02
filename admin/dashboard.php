@@ -1,14 +1,14 @@
  <?php
 // admin/dashboard.php - Complete Employee Management System
-session_start();
-
-// Check if admin is logged in
-if (!isset($_SESSION['admin_logged_in']) || !isset($_SESSION['admin_id'])) {
-    header('Location: index.php');
-    exit;
-}
 
 require_once '../config.php';
+requireLogin();
+
+// Check if admin
+if (!isAdmin()) {
+    header('Location: ../index.php');
+    exit;
+}
 
 // Get admin info
 $adminId = $_SESSION['admin_id'];
@@ -228,6 +228,19 @@ $statusCounts = $pdo->query("
         .user-name { font-weight: 600; color: #1e293b; }
         .user-role { font-size: 0.8em; color: #e67e22; }
         .content-area { padding: 30px; }
+        
+        /* Modal Enhancements */
+        .modal { z-index: 2000; }
+        .session-modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .session-modal.active { display: flex; animation: fadeInModal 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .session-card { background: white; border-radius: 24px; width: 90%; max-width: 400px; padding: 40px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .session-icon { width: 80px; height: 80px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 20px auto; }
+        .session-title { font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
+        .session-text { color: #64748b; margin-bottom: 30px; line-height: 1.6; }
+        .session-btn { background: #d97706; color: white; border: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: all 0.3s; width: 100%; }
+        .session-btn:hover { background: #b45309; transform: translateY(-2px); }
+        
+        @keyframes fadeInModal { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         
         /* Stats Cards */
         .stats-grid {
@@ -474,12 +487,19 @@ $statusCounts = $pdo->query("
             <a href="#" class="menu-item" onclick="openCreateEmployeeModal()">
                 <i class="fas fa-user-plus"></i> Add Employee
             </a>
-            <a href="../index.php" class="menu-item">
-                <i class="fas fa-plus-circle"></i> Add Candidate
-            </a>
-            <a href="#" class="menu-item" onclick="viewCandidates()">
-                <i class="fas fa-list"></i> Candidates List
-            </a>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <a href="#" class="menu-item" style="color: #fbbf24;" onclick="triggerRefresh()">
+                    <i class="fas fa-sync-alt"></i> Refresh Session
+                </a>
+                <a href="logout.php" class="menu-item" style="color: #ef4444;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+
+            <p class="session-text">Your secure session has timed out due to inactivity. Please login again to continue your work.</p>
+            <button class="session-btn" onclick="window.location.reload()">Login Again</button>
         </div>
     </div>
 
@@ -771,6 +791,40 @@ $statusCounts = $pdo->query("
                 </div>
             </div>
 
+            <!-- Refresh Confirmation Modal -->
+            <div class="modal" id="refreshConfirmModal">
+                <div class="modal-content" style="max-width: 400px; text-align: center;">
+                    <div class="modal-header" style="background: #e67e22;">
+                        <h3>Confirm Refresh</h3>
+                        <button class="modal-close" onclick="closeModal('refreshConfirm')">&times;</button>
+                    </div>
+                    <div class="modal-body" style="padding: 30px 20px;">
+                        <div style="font-size: 3em; color: #e67e22; margin-bottom: 20px;">
+                            <i class="fas fa-sync-alt fa-spin"></i>
+                        </div>
+                        <p style="font-size: 1.1em; color: #1e293b; margin-bottom: 10px;"><strong>Are you sure you want to refresh? / क्या आप वाकई रिफ्रेश करना चाहते हैं?</strong></p>
+                        <p style="color: #64748b; font-size: 0.95em; line-height: 1.6;">
+                            Your current session will be closed and any unsaved data will be lost.<br>
+                            आपका वर्तमान सत्र बंद कर दिया जाएगा और कोई भी असुरक्षित डेटा खो जाएगा।
+                        </p>
+                    </div>
+                    <div class="modal-footer" style="display: flex; gap: 10px; justify-content: center;">
+                        <button type="button" class="btn btn-warning" onclick="closeModal('refreshConfirm')" style="flex: 1;">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="executeRefresh()" style="flex: 1; background: #e67e22;">Yes, Refresh</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session Expired Modal -->
+            <div class="session-modal" id="sessionExpiredModal">
+                <div class="session-card">
+                    <div class="session-icon"><i class="fas fa-user-clock"></i></div>
+                    <h3 class="session-title">Session Expired</h3>
+                    <p class="session-text">For your security, the session has timed out. Please login again to continue.</p>
+                    <button class="session-btn" onclick="window.location.href='index.php'">Login Again</button>
+                </div>
+            </div>
+
             <script>
                 function toggleDropdown() {
                     document.getElementById('dropdownMenu').classList.toggle('active');
@@ -851,6 +905,51 @@ $statusCounts = $pdo->query("
                         form.submit();
                     }
                 }
+
+                // --- Session & Security Handlers ---
+                
+                // Catch 401 Unauthorized errors from fetch
+                const originalFetch = window.fetch;
+                window.fetch = function() {
+                    return originalFetch.apply(this, arguments).then(response => {
+                        if (response.status === 401) { showSessionExpired(); }
+                        return response;
+                    });
+                };
+
+                // Catch 401 Unauthorized errors from jQuery AJAX
+                if (window.jQuery) {
+                    $(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
+                        if (jqXHR.status === 401) { showSessionExpired(); }
+                    });
+                }
+
+                function showSessionExpired() {
+                    const modal = document.getElementById('sessionExpiredModal');
+                    if (modal) { modal.classList.add('active'); document.body.style.overflow = 'hidden'; }
+                }
+
+                function triggerRefresh() {
+                    document.getElementById('refreshConfirmModal').classList.add('active');
+                }
+
+                function executeRefresh() {
+                    window.location.href = 'logout.php';
+                }
+
+                // Intercept F5 and Ctrl+R
+                window.addEventListener('keydown', function(e) {
+                    if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                        e.preventDefault();
+                        triggerRefresh();
+                    }
+                });
+
+                // Refresh Guard
+                window.onbeforeunload = function(e) {
+                    // Standard browsers show their own message
+                    return "Are you sure you want to refresh?";
+                };
 
                 window.addEventListener('click', function(e) {
                     if (e.target.classList.contains('modal')) {
