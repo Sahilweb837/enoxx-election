@@ -133,6 +133,18 @@ for ($i = 0; $i < 10; $i++) {
     imageline($image, $x1, $y1, $x2, $y2, $lightGray);
 }
 
+// Add Official Enoxx News Logo (Local Asset)
+$logoPath = 'uploads/official_enoxx_logo.png';
+$logoImg = @imagecreatefrompng($logoPath);
+if ($logoImg) {
+    $orig_w = imagesx($logoImg);
+    $orig_h = imagesy($logoImg);
+    $target_w = 280;
+    $target_h = ($orig_h / $orig_w) * $target_w;
+    imagecopyresampled($image, $logoImg, 15, 60, 0, 0, $target_w, $target_h, $orig_w, $orig_h);
+    imagedestroy($logoImg);
+}
+
 // Add border
 imagerectangle($image, 0, 0, $width-1, $height-1, $orange);
 imagerectangle($image, 2, 2, $width-3, $height-3, $saffron);
@@ -171,7 +183,7 @@ $locationHindiText = $locationHindi;
 // For better fonts, you'd need to use imagettftext with a TTF file
 
 // Title in English
-$titleX = 200;
+$titleX = 310;
 $titleY = 25;
 for ($i = 0; $i < strlen($titleText); $i++) {
     imagestring($image, 5, $titleX + ($i * 18), $titleY, $titleText[$i], $white);
@@ -179,13 +191,13 @@ for ($i = 0; $i < strlen($titleText); $i++) {
 
 // Title in Hindi (using approximate representation)
 $hindiText = "पंचायत चुनाव 2026";
-$hindiX = 200;
+$hindiX = 310;
 $hindiY = 50;
 imagestring($image, 3, $hindiX, $hindiY, $hindiText, $white);
 
 // Location text
-imagestring($image, 5, 200, 80, $locationText, $darkOrange);
-imagestring($image, 3, 200, 105, $locationHindiText, $darkOrange);
+imagestring($image, 5, 310, 80, $locationText, $darkOrange);
+imagestring($image, 3, 310, 105, $locationHindiText, $darkOrange);
 
 // Add filter info
 $filterY = 130;
@@ -230,12 +242,29 @@ for ($i = 0; $i < count($candidates) && $i < ($cols * $rows); $i++) {
     $photoSize = 60;
     
     // Try to load candidate photo if exists
-    $photoPath = 'uploads/' . $candidate['photo_url'];
+    $filename = basename($candidate['photo_url']);
+    
+    // Path resolution
+    $candidatePaths = [
+        'uploads/candidates/' . $filename,
+        'employee/uploads/candidates/' . $filename,
+        'uploads/' . $filename,
+        'employee/uploads/' . $filename
+    ];
+    
+    $photoPath = '';
+    foreach ($candidatePaths as $p) {
+        if (file_exists($p)) {
+            $photoPath = $p;
+            break;
+        }
+    }
+    
     if ($candidate['photo_url'] && file_exists($photoPath)) {
         $photoInfo = getimagesize($photoPath);
         if ($photoInfo) {
             $photoImage = null;
-            if ($photoInfo['mime'] == 'image/jpeg') {
+            if ($photoInfo['mime'] == 'image/jpeg' || $photoInfo['mime'] == 'image/jpg') {
                 $photoImage = imagecreatefromjpeg($photoPath);
             } elseif ($photoInfo['mime'] == 'image/png') {
                 $photoImage = imagecreatefrompng($photoPath);

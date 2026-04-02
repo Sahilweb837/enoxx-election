@@ -1,4 +1,4 @@
-<?php
+ <?php
 /**
  * Enoxx News - Panchayat Election 2026 Portal
  * Theme: Enoxx News Official — Black, White & Yellow
@@ -31,13 +31,6 @@ function getGenderText($gender) {
 }
 
 // Status helpers
-function getCleanPhotoPath($path) {
-    if (empty($path)) return '';
-    $cleanPath = str_replace(['uploads/candidates/', 'uploads/'], '', $path);
-    $finalPath = 'uploads/' . $cleanPath;
-    return (file_exists($finalPath)) ? $finalPath : '';
-}
-
 function getStatusText($status) {
     global $current_language;
     $map = [
@@ -60,6 +53,62 @@ function getStatusClass($status) {
         'withdrawn'  => 'bg-red-100 text-red-800 border-red-200',
         'verified'   => 'bg-blue-100 text-blue-800 border-blue-200',
     ][$status] ?? 'bg-gray-100 text-gray-800';
+}
+
+// Helper function to get candidate image (ONLY for verified users)
+function getCandidateImage($candidate) {
+    if (!$candidate) return null;
+    
+    // Only return image if candidate is verified
+    if (!isVerified($candidate)) {
+        return null;
+    }
+    
+    $photoPath = !empty($candidate['photo_url']) ? trim($candidate['photo_url']) : '';
+    
+    if (!empty($photoPath)) {
+        // Handle full URLs
+        if (filter_var($photoPath, FILTER_VALIDATE_URL)) {
+            return $photoPath;
+        }
+        
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $baseUrl = $protocol . "://" . $_SERVER['HTTP_HOST'] . str_replace(basename($_SERVER['SCRIPT_NAME']), "", $_SERVER['SCRIPT_NAME']);
+        
+        // Tiered path resolution
+        $filename = basename($photoPath);
+        $pathsToTry = [
+            'uploads/candidates/' . $filename,
+            'employee/uploads/candidates/' . $filename,
+            'uploads/' . $filename,
+            'employee/uploads/' . $filename,
+            $photoPath
+        ];
+        
+        foreach ($pathsToTry as $path) {
+            if (file_exists($path)) {
+                return $baseUrl . $path;
+            }
+        }
+    }
+    
+    return null;
+}
+
+// Helper function to check if candidate is verified
+function isVerified($candidate) {
+    if (!$candidate) return false;
+    
+    // 1. Check if they have a non-empty transaction ID
+    if (!empty($candidate['transaction_id'])) return true;
+    
+    // 2. Check for specific status strings
+    if (in_array($candidate['status'], ['verified', 'winner'])) return true;
+    
+    // 3. Check for editorial approval
+    if (isset($candidate['approval_status']) && $candidate['approval_status'] === 'approved') return true;
+    
+    return false;
 }
 
 // Slider / Animation helpers
@@ -96,9 +145,9 @@ if ($candidate_slug) {
 } elseif ($search_query) {
     $s = $pdo->prepare("SELECT c.*, p.panchayat_name, p.panchayat_name_hi, p.slug as panchayat_slug, b.slug as block_slug, d.slug as district_slug
                         FROM candidates c
-                        JOIN panchayats p ON c.panchayat_id = p.id
-                        JOIN blocks b ON p.block_id = b.id
-                        JOIN districts d ON b.district_id = d.id
+                        LEFT JOIN panchayats p ON c.panchayat_id = p.id
+                        LEFT JOIN blocks b ON c.block_id = b.id
+                        LEFT JOIN districts d ON c.district_id = d.id
                         WHERE c.candidate_name_en LIKE ? OR c.candidate_name_hi LIKE ? OR c.village LIKE ?");
     $s->execute(["%$search_query%", "%$search_query%", "%$search_query%"]);
     $items         = $s->fetchAll();
@@ -136,21 +185,39 @@ if ($candidate_slug) {
         $context_title = langs_text($dInfo['district_name_hi'], $dInfo['district_name']);
     }
 } elseif (isset($_GET['verified'])) {
-    $stmt = $pdo->prepare("SELECT * FROM candidates WHERE (transaction_id IS NOT NULL AND transaction_id != '') OR status IN ('verified', 'winner') ORDER BY created_at DESC");
+    // Fetch only verified candidates with their images
+    $stmt = $pdo->prepare("SELECT c.*, d.district_name, d.district_name_hi, d.slug as district_slug,
+                           b.block_name, b.block_name_hi, b.slug as block_slug,
+                           p.panchayat_name, p.panchayat_name_hi, p.slug as panchayat_slug
+                           FROM candidates c
+                           LEFT JOIN districts d ON c.district_id = d.id
+                           LEFT JOIN blocks b ON c.block_id = b.id
+                           LEFT JOIN panchayats p ON c.panchayat_id = p.id
+                           WHERE (c.transaction_id IS NOT NULL AND c.transaction_id != '') 
+                           OR c.status IN ('verified', 'winner') 
+                           ORDER BY c.created_at DESC");
     $stmt->execute();
     $items = $stmt->fetchAll();
     $current_level = 'candidates';
     $page_title = langs_text('सत्यापित प्रोफाइल','Verified Profiles');
+    $context_title = $page_title;
 } else {
     $items = $pdo->query("SELECT d.*, (SELECT COUNT(*) FROM blocks b WHERE b.district_id = d.id) as count FROM districts d ORDER BY d.district_name ASC LIMIT 12")->fetchAll();
     $current_level = 'districts';
-    
-    // Fetch some featured verified profiles for the home page
-    $featuredVerified = $pdo->query("SELECT c.*, p.panchayat_name, p.panchayat_name_hi 
-                                    FROM candidates c 
-                                    JOIN panchayats p ON c.panchayat_id = p.id 
-                                    WHERE (c.transaction_id IS NOT NULL AND c.transaction_id != '') OR c.status IN ('verified', 'winner') 
-                                    ORDER BY RAND() LIMIT 4")->fetchAll();
+}
+
+// Fetch Featured Verified Profiles for the homepage
+$featuredVerified = [];
+if ($current_level === 'districts') {
+    $fvStmt = $pdo->query("SELECT c.*, p.panchayat_name, p.panchayat_name_hi, d.slug as district_slug 
+                           FROM candidates c 
+                           JOIN panchayats p ON c.panchayat_id = p.id
+                           JOIN districts d ON c.district_id = d.id
+                           WHERE (c.transaction_id IS NOT NULL AND c.transaction_id != '') 
+                           OR c.status IN ('verified', 'winner') 
+                           OR c.approval_status = 'approved'
+                           ORDER BY RAND() LIMIT 4");
+    $featuredVerified = $fvStmt->fetchAll();
 }
 
 // Filter dropdowns
@@ -293,15 +360,100 @@ tailwind.config = {
         margin-left: 8px;
         vertical-align: middle;
     }
+    .candidate-image {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #f7be1d;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .candidate-image-placeholder {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #9ca3af;
+        border: 3px solid #e5e7eb;
+    }
+    /* Download specific styles */
+    .download-watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        opacity: 0.03;
+        pointer-events: none;
+        z-index: 1;
+        width: 80%;
+        display: none; /* Only show in capture */
+    }
+    .download-watermark img {
+        width: 100%;
+        height: auto;
+    }
+    .no-print {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .download-watermark {
+            opacity: 0.6;
+            print-color-adjust: exact;
+        }
+    }
+
+    /* Download layout branding - Broadcast style */
+    #download-layout {
+        display: none;
+        width: 1200px;
+        padding: 50px;
+        background: #fff8f2;
+        position: relative;
+        overflow: hidden;
+    }
+    .download-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 4px solid #785a00;
+    }
+    .download-footer-banner {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 2px solid rgba(120, 90, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .broadcast-tag {
+        background: #785a00;
+        color: #ffffff;
+        padding: 5px 15px;
+        font-size: 14px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
 </style>
 </head>
 <body class="font-body">
 
 <!-- HEADER -->
-<header class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-md border-b border-primary/20 shadow-sm">
+<header data-html2canvas-ignore="true" class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-md border-b border-primary/20 shadow-sm no-print">
     <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <a href="index.php" class="flex items-center">
-            <img src="https://enoxxnews.in/wp-content/uploads/2026/01/Enoxx-News-Logo-Website-670x80-1.png" alt="Enoxx News" class="h-10 sm:h-11 w-auto">
+            <img src="uploads/official_enoxx_logo.png" alt="Enoxx News" class="h-10 sm:h-11 w-auto">
         </a>
         
         <nav class="hidden lg:flex items-center gap-8 text-[11px] font-black uppercase tracking-widest">
@@ -334,8 +486,7 @@ tailwind.config = {
 <main class="pt-28 pb-12 px-4 max-w-7xl mx-auto min-h-screen">
 
     <?php if ($current_level === 'profile' && $view_candidate): ?>
-    <!-- PROFILE PAGE -->
-    <nav class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-8 overflow-x-auto whitespace-nowrap">
+    <nav data-html2canvas-ignore="true" class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-8 overflow-x-auto whitespace-nowrap no-print">
         <a href="index.php" class="hover:text-primary"><?php echo langs_text('होम', 'Home'); ?></a>
         <span class="material-symbols-outlined text-xs">chevron_right</span>
         <a href="index.php?district=<?php echo $view_candidate['district_slug']; ?>" class="hover:text-primary"><?php echo htmlspecialchars(langs_text($view_candidate['district_name_hi'],$view_candidate['district_name'])); ?></a>
@@ -345,53 +496,60 @@ tailwind.config = {
         <span class="text-primary"><?php echo htmlspecialchars(langs_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en'])); ?></span>
     </nav>
 
-    <div id="capture-area">
-        <div class="banner-header bg-white/50 backdrop-blur-md px-10 py-8 border-b-4 border-primary/20 flex justify-between items-center rounded-t-[2.5rem]">
-            <div class="flex items-center gap-6">
-                <img src="https://enoxxnews.in/wp-content/uploads/2026/01/Enoxx-News-Logo-Website-670x80-1.png" alt="Enoxx News" class="h-14 w-auto">
-                <div class="h-10 w-px bg-primary/10"></div>
-                <div class="text-[11px] text-primary/40 font-black uppercase tracking-[0.3em] mt-1 leading-tight">
-                    <?php echo langs_text('आधिकारिक<br>चुनाव रजिट्री 2026', 'OFFICIAL<br>ELECTION REGISTRY 2026'); ?>
+    <div id="capture-area" style="position: relative; overflow: hidden; border-radius: 2.5rem;">
+        <!-- Download-only Layout (Hidden on screen, shown in capture) -->
+        <div id="download-layout" class="font-headline">
+            <div class="download-header">
+                <img src="uploads/official_enoxx_logo.png" alt="Enoxx Logo" style="height: 60px; width: auto;">
+                <div class="text-right">
+                    <div class="broadcast-tag"><?php echo langs_text('आधिकारिक चुनाव दस्तावेज़', 'Official Election Dossier'); ?></div>
+                    <div class="text-[10px] font-black text-primary mt-1 uppercase tracking-widest"><?php echo date('d M Y'); ?> • <?php echo langs_text('हिमाचल पंचायत चुनाव 2026', 'Himachal Panchayat Elections 2026'); ?></div>
                 </div>
             </div>
-            <div class="text-right">
-                <div class="inline-block bg-primary/5 border-2 border-primary/20 rounded-2xl p-4 text-left shadow-lg">
-                    <div class="text-on-surface text-2xl font-black tabular-nums tracking-tighter leading-none"><?php echo langs_text('आरईएफ-', 'REF-'); ?><?php echo str_pad($view_candidate['id'],4,'0',STR_PAD_LEFT); ?></div>
-                    <div class="text-primary text-[9px] font-black mt-2 uppercase tracking-[0.2em] flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
-                        <?php echo langs_text('संपादकीय सत्यापन: सक्रिय', 'EDITORIAL VERIFICATION: ACTIVE'); ?>
+            
+            <!-- This will be populated with the card content during cloning -->
+            <div id="download-card-container"></div>
+            
+            <div class="download-footer-banner">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-3xl">verified_user</span>
+                    <div>
+                        <div class="text-[10px] font-black text-primary uppercase"><?php echo langs_text('डिजिटल रूप से प्रमाणित', 'Digitally Certified'); ?></div>
+                        <div class="text-[8px] font-bold text-primary/60 uppercase"><?php echo langs_text('संपादकीय टीम द्वारा एनॉक्स न्यूज़ नेटवर्क', 'By Editorial Team - Enoxx News Network'); ?></div>
                     </div>
+                </div>
+                <div class="text-right opacity-40">
+                    <div class="text-[8px] font-black uppercase"><?php echo langs_text('दस्तावेज़ आईडी', 'Document ID'); ?>: ENX-<?php echo $view_candidate['id']; ?>-<?php echo strtoupper(bin2hex(random_bytes(4))); ?></div>
                 </div>
             </div>
         </div>
 
+        <!-- On-screen viewable card -->
+        <div id="main-card-display">
+            <!-- Enoxx News Logo Watermark for Download (Legacy, keeping for safety) -->
+            <div class="download-watermark" style="display: none;">
+                <img src="uploads/official_enoxx_logo.png" alt="Enoxx Watermark">
+            </div>
+ 
+
         <?php 
         // Verification Logic: transaction_id makes a profile verified
-        $isVerified = (!empty($view_candidate['transaction_id']) || $view_candidate['status'] === 'verified' || $view_candidate['status'] === 'winner'); 
+        $isVerified = isVerified($view_candidate);
+        $candidateImage = getCandidateImage($view_candidate); // This will only return image if verified
         ?>
         <div class="glass-gold rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative border border-primary-container/30">
             
             <?php if ($isVerified): ?>
-            <div class="verified-seal">
-                <div>
-                    <div class="text-[10px] uppercase"><?php echo langs_text('सत्यापित', 'Verified'); ?></div>
-                    <div class="text-lg">CIVIS</div>
-                </div>
-            </div>
+      
             <?php endif; ?>
 
-            <!-- Candidate Portrait Area (2/5) -->
+            <!-- Candidate Portrait Area (2/5) - Only show image for verified users -->
             <div class="md:w-2/5 relative min-h-[450px] bg-on-surface overflow-hidden">
-                <?php 
-                $photoPath = getCleanPhotoPath($view_candidate['photo_url']);
-                $hasPhoto = ($isVerified && !empty($photoPath));
-                
-                if ($hasPhoto): ?>
-                <img src="<?php echo $photoPath; ?>" class="absolute inset-0 w-full h-full object-cover" alt="Candidate">
+                <?php if ($candidateImage && $isVerified): ?>
+                <img src="<?php echo $candidateImage; ?>" crossorigin="anonymous" class="absolute inset-0 w-full h-full object-cover" alt="Candidate">
                 <?php else: ?>
                 <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-tr from-on-surface/95 to-on-surface/40 overflow-hidden">
-                    <div class="text-white/5 font-black text-[15rem] absolute -bottom-10 -right-10 transform rotate-12 select-none">ENX</div>
-                    <div class="relative z-10 w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center text-primary/10 font-headline font-black text-6xl shadow-2xl bg-on-surface/50">
+                     <div class="relative z-10 w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center text-primary/10 font-headline font-black text-6xl shadow-2xl bg-on-surface/50">
                         <?php echo mb_substr(langs_text($view_candidate['candidate_name_hi'],$view_candidate['candidate_name_en']),0,1); ?>
                     </div>
                 </div>
@@ -401,9 +559,9 @@ tailwind.config = {
                 
                 <div class="absolute bottom-10 left-8 right-8 text-white z-10">
                     <div class="flex items-center gap-2 mb-4">
-                        <span class="px-3 py-1 bg-primary text-white text-[10px] font-black tracking-widest uppercase rounded-sm"><?php echo htmlspecialchars(langs_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?></span>
+                        <!-- <span class="px-3 py-1 bg-primary text-white text-[10px] font-black tracking-widest uppercase rounded-sm"><?php echo htmlspecialchars(langs_text($view_candidate['panchayat_name_hi'],$view_candidate['panchayat_name'])); ?></span> -->
                         <?php if ($isVerified): ?>
-                        <span class="px-3 py-1 bg-white/10 backdrop-blur-md text-white text-[10px] font-bold tracking-widest uppercase rounded-sm"><?php echo langs_text('सत्यापित प्रोफाइल', 'Verified Profile'); ?></span>
+                        <!-- <span class="px-3 py-1 bg-white/10 backdrop-blur-md text-white text-[10px] font-bold tracking-widest uppercase rounded-sm"><?php echo langs_text('सत्यापित प्रोफाइल', 'Verified Profile'); ?></span> -->
                         <?php endif; ?>
                     </div>
                     <h1 class="text-4xl md:text-5xl font-headline font-black tracking-tighter leading-none mb-2">
@@ -422,27 +580,21 @@ tailwind.config = {
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10">
                         <?php if ($isVerified): ?>
                         <div class="flex items-center gap-4">
-                            <div class="w-14 h-14 rounded-full border-2 border-primary/20 flex items-center justify-center bg-white shadow-xl">
-                                <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">verified_user</span>
-                            </div>
+                            
                             <div>
-                                <h3 class="text-sm font-headline font-black text-primary tracking-[0.1em]"><?php echo langs_text('एनएक्स प्रमाणित', 'ENX CERTIFIED'); ?></h3>
-                                <div class="bg-tertiary-container text-white text-[9px] font-black uppercase px-3 py-1 rounded-full inline-block mt-1">
-                                    <?php echo langs_text('सत्यापन पूर्ण', 'Verification Complete'); ?>
-                                </div>
+       <img src="uploads/official_enoxx_logo.png" alt="Enoxx Logo" class="h-8 w-auto">                                <div class="bg- -container text-white text-[0px] font-black uppercase px-3 py-1   l inline-block mt-1">
+                                    </div>
                             </div>
                         </div>
                         <?php else: ?>
                         <div class="flex items-center gap-4">
-                             <img src="https://enoxxnews.in/wp-content/uploads/2026/01/Enoxx-News-Logo-Website-670x80-1.png" alt="Enoxx Logo" class="h-8 w-auto">
+                        
                              <div class="h-6 w-px bg-outline/20"></div>
                              <div class="text-[10px] font-black text-primary/40 uppercase tracking-widest"><?php echo langs_text('चुनाव रजिस्ट्री 2026', 'Election Registry 2026'); ?></div>
                         </div>
                         <?php endif; ?>
                         
-                        <p class="text-[9px] text-primary/50 leading-tight max-w-[160px] italic font-bold uppercase tracking-tighter border-l-2 border-primary/10 pl-3">
-                            <?php echo langs_text('एनॉक्स न्यूज़ नेटवर्क संपादकीय सत्यापन प्रणाली के माध्यम से सत्यापित।', 'Verified through the Enoxx News Network editorial verification system.'); ?>
-                        </p>
+                        
                     </div>
 
                     <div class="grid grid-cols-2 gap-y-8 gap-x-10">
@@ -471,48 +623,34 @@ tailwind.config = {
                             <p class="text-lg font-body font-black text-on-surface"><?php echo htmlspecialchars(langs_text($view_candidate['education_hi'], $view_candidate['education']) ?: '—'); ?></p>
                         </div>
                     </div>
+
+                    <!-- Short Description Section (Central) -->
+                    <?php 
+                    $shortNote = !empty($view_candidate['short_notes_hi']) ? $view_candidate['short_notes_hi'] : ($view_candidate['short_notes_en'] ?? '');
+                    if(!empty($shortNote)): 
+                    ?>
+                    <div class="mt-8 bg-black/5 p-8 rounded-3xl border-l-[6px] border-primary relative overflow-hidden">
+                        <div class="absolute -right-4 top-1/2 -translate-y-1/2 text-black/[0.03] font-headline font-black text-8xl rotate-12 pointer-events-none uppercase tracking-tighter"><?php echo langs_text('परिचय', 'ABOUT'); ?></div>
+                        <label class="text-[10px] uppercase tracking-widest font-black text-primary mb-3 block opacity-80"><?php echo langs_text('संक्षिप्त परिचय / घोषणापत्र', 'CANDIDATE SHORT DESCRIPTION'); ?></label>
+                        <p class="text-base font-body font-bold text-on-surface leading-relaxed relative z-10">
+                            "<?php echo nl2br(htmlspecialchars($shortNote)); ?>"
+                        </p>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Digital Trust Signature (Privacy Optimized) -->
-                <div class="mt-auto bg-primary/5 rounded-2xl p-6 border border-primary/20 flex items-center justify-between shadow-inner">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg">
-                            <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">assured_workload</span>
-                        </div>
-                        <div>
-                            <label class="text-[9px] font-black uppercase text-primary tracking-[0.2em] mb-1 block"><?php echo langs_text('डिजिटल विश्वास हस्ताक्षर', 'DIGITAL TRUST SIGNATURE'); ?></label>
-                            <p class="text-xs font-black text-on-surface opacity-70 tracking-tighter uppercase">
-                                <?php echo langs_text('एएनएक्स-पॉलिसी-2026-सत्यापन-प्रोटोकॉल', 'ENX-POLICY-2026-VERIFICATION-PROTOCOL'); ?>
-                            </p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[9px] font-black text-tertiary-container uppercase flex items-center gap-1 justify-end">
-                            <span class="w-2 h-2 bg-tertiary-container rounded-full animate-pulse"></span> 
-                            <?php echo langs_text('प्रमाणित', 'SECURE'); ?>
-                        </span>
-                        <div class="text-[8px] text-primary/30 mt-1 uppercase font-bold italic"><?php echo date('d.m.Y H:i:s'); ?></div>
-                    </div>
-                </div>
+           
             </div>
         </div>
 
-        <div class="mt-6 flex flex-wrap justify-between items-center px-4 gap-4">
-            <div class="flex items-center gap-4 text-primary font-label text-[10px] uppercase tracking-widest font-black">
-                <span><?php echo langs_text('संदर्भ आईडी:', 'Reference ID:'); ?> <?php echo langs_text('एनएक्स-संदर्भ-', 'ENX-REF-'); ?><?php echo str_pad($view_candidate['id'],4,'0',STR_PAD_LEFT); ?></span>
-                <span class="w-1 h-1 bg-primary/30 rounded-full"></span>
-                <span><?php echo langs_text('अंतिम अपडेट:', 'Last Update:'); ?> <?php echo date('d M Y'); ?></span>
-            </div>
-            <div class="text-right text-[8px] text-primary/50 uppercase tracking-widest font-black">
-                <?php echo langs_text('संपादकीय प्रोटोकॉल | प्रमाणित ऑडिट परिणाम', 'Editorial Protocol | Authenticated Audit Result'); ?>
-            </div>
-        </div>
-    </div>
+        </div> <!-- End of #main-card-display -->
+    </div> <!-- End of #capture-area -->
 
     <!-- Actions (Outside capture area) -->
-    <div class="mt-8 flex flex-wrap gap-4">
+    <div data-html2canvas-ignore="true" class="mt-8 flex flex-wrap gap-4 no-print">
         <button onclick="downloadDossier()" class="flex-1 min-w-[200px] shimmer-gold text-white font-headline font-bold py-4 rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3">
-            <span class="material-symbols-outlined">download</span> <?php echo langs_text('डोजियर डाउनलोड करें (PNG)', 'Download Dossier (PNG)'); ?>
+            <span class="material-symbols-outlined">download</span> <?php echo langs_text('डाउनलोड करें (PNG)', 'Download(PNG)'); ?>
         </button>
         <a href="index.php" class="flex-1 min-w-[200px] bg-black text-white font-headline font-bold py-4 rounded-2xl text-center hover:bg-gray-800 transition active:scale-95 flex items-center justify-center gap-3">
             <span class="material-symbols-outlined text-sm">home</span> <?php echo langs_text('डैशबोर्ड पर लौटें', 'Return to Dashboard'); ?>
@@ -524,22 +662,61 @@ tailwind.config = {
         const el = document.getElementById('capture-area');
         const ov = document.getElementById('loading-overlay');
         ov.style.display = 'flex';
+        
         try {
-            await new Promise(r => setTimeout(r, 800));
-            // Ensure capture-area is visible/expanded properly for high-res capture
+            // Standard Pre-loading for local assets
+            const images = el.querySelectorAll('img');
+            const imagePromises = Array.from(images).map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                });
+            });
+            
+            await Promise.all(imagePromises);
+            await new Promise(r => setTimeout(r, 600)); // Buffer for rendering
+            
             const canvas = await html2canvas(el, { 
-                scale: 3, 
+                scale: 2, 
                 backgroundColor: '#fff8f2', 
                 useCORS: true,
                 logging: false,
-                allowTaint: true
+                allowTaint: false,
+                onclone: function(clonedDoc, element) {
+                    const downloadLayout = clonedDoc.getElementById('download-layout');
+                    const mainDisplay = clonedDoc.getElementById('main-card-display');
+                    const cardContainer = clonedDoc.getElementById('download-card-container');
+                    
+                    if (downloadLayout && mainDisplay && cardContainer) {
+                        // Move the glass-gold card from main display to download layout during capture
+                        const card = mainDisplay.querySelector('.glass-gold');
+                        if (card) {
+                            // Clone the card so we don't destroy the original during the process
+                            const cardClone = card.cloneNode(true);
+                            // Adjust card styling for the larger banner layout if needed
+                            cardClone.style.boxShadow = '0 30px 60px rgba(0,0,0,0.1)';
+                            cardContainer.appendChild(cardClone);
+                            
+                            // Swap visibility
+                            downloadLayout.style.display = 'block';
+                            mainDisplay.style.display = 'none';
+                        }
+                    }
+                }
             });
+            
             const a = document.createElement('a');
-            a.download = `ENOXX_ENX_<?php echo $view_candidate['id']; ?>.png`;
+            a.download = `ENOXX_ENX_CANDIDATE_<?php echo $view_candidate['id']; ?>_<?php echo date('Y-m-d'); ?>.png`;
             a.href = canvas.toDataURL('image/png');
             a.click();
-        } catch(e) { console.error(e); alert('Error generating document'); }
-        finally { ov.style.display = 'none'; }
+        } catch(e) { 
+            console.error(e);   
+            alert('<?php echo langs_text('डाउनलोड में त्रुटि', 'Error generating document'); ?>'); 
+        }
+        finally { 
+            ov.style.display = 'none'; 
+        }
     }
     </script>
 
@@ -552,6 +729,50 @@ tailwind.config = {
             <?php echo count($items); ?> <?php echo langs_text('रिकॉर्ड प्रमाणित', 'Records Authenticated'); ?>
         </p>
     </div>
+
+    <!-- Featured Verified Profiles Section -->
+    <?php if ($current_level === 'districts' && !empty($featuredVerified)): ?>
+    <div class="mb-16">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h2 class="text-2xl font-headline font-black uppercase tracking-tight"><?php echo langs_text('विशेष सत्यापित उम्मीदवार', 'Featured Verified Profiles'); ?></h2>
+                <p class="text-[10px] font-bold text-primary/40 uppercase tracking-widest"><?php echo langs_text('संपादकीय टीम द्वारा प्रमाणित शीर्ष प्रोफाइल', 'Top profiles authenticated by editorial team'); ?></p>
+            </div>
+            <div class="h-px bg-primary/10 flex-1 mx-8 hidden md:block"></div>
+            <a href="?verified=1" class="text-[10px] font-black uppercase text-primary tracking-widest border-b-2 border-primary/20 hover:border-primary transition-all pb-1"><?php echo langs_text('सभी देखें', 'View All'); ?></a>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <?php foreach ($featuredVerified as $fv): 
+                $fvImage = getCandidateImage($fv);
+                $fvLink = "index.php?candidate=" . $fv['slug'] . "&lang=" . $current_language;
+            ?>
+            <a href="<?php echo $fvLink; ?>" class="group block relative bg-black rounded-3xl overflow-hidden aspect-[4/5] shadow-2xl hover:-translate-y-2 transition-all duration-500">
+                <?php if ($fvImage): ?>
+                <img src="<?php echo $fvImage; ?>" alt="Candidate" class="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
+                <?php else: ?>
+                <div class="absolute inset-0 bg-gradient-to-tr from-on-surface to-primary/20 flex items-center justify-center">
+                    <span class="text-white/10 font-black text-9xl"><?php echo mb_substr(langs_text($fv['candidate_name_hi'],$fv['candidate_name_en']),0,1); ?></span>
+                </div>
+                <?php endif; ?>
+                
+                <div class="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black via-black/40 to-transparent">
+                    <div class="flex items-center gap-2 mb-2">
+                         <span class="px-2 py-0.5 bg-primary text-black text-[8px] font-black uppercase rounded"><?php echo htmlspecialchars(langs_text($fv['panchayat_name_hi']??'',$fv['panchayat_name']??'')); ?></span>
+                         <span class="material-symbols-outlined text-[#1DA1F2] text-sm fill-1" style="font-variation-settings: 'FILL' 1;">verified</span>
+                    </div>
+                    <h3 class="text-white font-headline font-black text-xl uppercase leading-tight group-hover:text-primary transition-colors"><?php echo htmlspecialchars(langs_text($fv['candidate_name_hi'],$fv['candidate_name_en'])); ?></h3>
+                    <p class="text-white/40 text-[9px] font-bold uppercase tracking-widest mt-1"><?php echo getStatusText($fv['status']); ?></p>
+                </div>
+
+                <div class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                </div>
+            </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Unified Dynamic Filter Bar -->
     <div class="bg-white border border-primary/10 rounded-3xl p-8 mb-12 shadow-xl shadow-primary/5">
@@ -612,51 +833,9 @@ tailwind.config = {
         <?php endif; ?>
     </div>
 
-    <?php if ($current_level === 'districts' && !empty($featuredVerified)): ?>
-    <!-- FEATURED VERIFIED PROFILES -->
-    <div class="mb-12">
-        <div class="flex items-center justify-between mb-8">
-            <div>
-                <h2 class="text-3xl font-headline font-black uppercase tracking-tighter text-on-surface"><?php echo langs_text('सत्यापित प्रोफाइल', 'Verified Profiles'); ?></h2>
-                <p class="text-primary text-[10px] font-black uppercase tracking-widest mt-1 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                    <?php echo langs_text('आधिकारिक संपादकीय सत्यापन प्राप्त', 'Official Editorial Verification Received'); ?>
-                </p>
-            </div>
-            <a href="?verified=1" class="text-[10px] font-black uppercase text-primary border-b-2 border-primary pb-1 hover:text-yellow-600 transition"><?php echo langs_text('सभी देखें', 'Browse All'); ?></a>
-        </div>
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <?php foreach ($featuredVerified as $fv): 
-                $fv_isV = true; // They are from the verified query
-                $fvPhoto = getCleanPhotoPath($fv['photo_url']);
-                $fvLink = "index.php?candidate=" . $fv['slug'] . "&lang=" . $current_language;
-            ?>
-            <a href="<?php echo $fvLink; ?>" class="news-card rounded-[2rem] p-6 flex flex-col items-center text-center group border-2 border-primary/20">
-                <div class="relative mb-4">
-                    <?php if($fvPhoto): ?>
-                    <img src="<?php echo $fvPhoto; ?>" class="w-20 h-20 rounded-full border-4 border-primary/20 object-cover shadow-xl" alt="Photo">
-                    <?php else: ?>
-                    <div class="w-20 h-20 rounded-full bg-surface-container border-2 border-primary/10 flex items-center justify-center text-on-surface/10 font-headline font-black text-2xl shadow-inner bg-on-surface/5">
-                        <?php echo mb_substr(langs_text($fv['candidate_name_hi'],$fv['candidate_name_en']),0,1); ?>
-                    </div>
-                    <?php endif; ?>
-                    <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-md">
-                        <span class="material-symbols-outlined text-[#1DA1F2] text-lg block fill-1" style="font-variation-settings: 'FILL' 1;">verified</span>
-                    </div>
-                </div>
-                <h3 class="font-headline font-black text-base text-on-surface group-hover:text-primary transition-all uppercase leading-tight"><?php echo htmlspecialchars(langs_text($fv['candidate_name_hi'],$fv['candidate_name_en'])); ?></h3>
-                <p class="text-[9px] font-bold text-primary/40 uppercase tracking-widest mt-1"><?php echo htmlspecialchars(langs_text($fv['panchayat_name_hi'],$fv['panchayat_name'])); ?></p>
-                <div class="mt-4 text-[8px] font-black text-primary uppercase tracking-widest group-hover:gap-2 transition-all flex items-center justify-center"><?php echo langs_text('डोजियर देखें', 'View Dossier'); ?> <span class="material-symbols-outlined text-[10px]">arrow_forward</span></div>
-            </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <?php endif; ?>
-
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         <?php foreach ($items as $item): 
-            $slug = $item['slug'];
+            $slug = $item['slug'] ?? null;
             $name_hi = $item['district_name_hi'] ?? $item['block_name_hi'] ?? $item['panchayat_name_hi'] ?? $item['candidate_name_hi'] ?? '';
             $name_en = $item['district_name'] ?? $item['block_name'] ?? $item['panchayat_name'] ?? $item['candidate_name_en'] ?? '';
             $link = 'index.php?';
@@ -668,18 +847,19 @@ tailwind.config = {
 
             if($current_level === 'candidates'):
                 // Unified Verification Logic
-                $isV = (!empty($item['transaction_id']) || $item['status'] === 'verified' || $item['status'] === 'winner');
-                $photo = $isV ? getCleanPhotoPath($item['photo_url']) : null;
+                $isV = isVerified($item);
+                $candidateImage = getCandidateImage($item); // This will only return image if verified
         ?>
         <a href="<?php echo $link; ?>" class="news-card rounded-[2rem] p-6 flex flex-col items-center text-center group">
             <div class="relative mb-6">
-                <?php if($photo): ?>
-                <img src="<?php echo $photo; ?>" class="w-24 h-24 rounded-full border-4 border-primary/10 object-cover shadow-xl" alt="Photo">
+                <?php if($candidateImage && $isV): ?>
+                <img src="<?php echo $candidateImage; ?>" class="candidate-image" alt="Candidate Photo">
                 <?php else: ?>
-                <div class="w-24 h-24 rounded-full bg-surface-container border-2 border-primary/5 flex items-center justify-center text-on-surface/10 font-headline font-black text-3xl shadow-inner bg-on-surface/5">
+                <div class="candidate-image-placeholder">
                     <?php echo mb_substr(langs_text($name_hi,$name_en),0,1); ?>
                 </div>
                 <?php endif; ?>
+                
                 <?php if($isV): ?>
                 <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-md">
                     <span class="material-symbols-outlined text-[#1DA1F2] text-xl block fill-1" style="font-variation-settings: 'FILL' 1;">verified</span>
@@ -688,14 +868,19 @@ tailwind.config = {
             </div>
             <h3 class="font-headline font-black text-lg text-on-surface group-hover:text-primary transition-all uppercase leading-tight"><?php echo htmlspecialchars(langs_text($name_hi,$name_en)); ?></h3>
             <p class="text-[10px] font-bold text-primary/40 uppercase tracking-widest mt-1"><?php echo htmlspecialchars($item['village']??''); ?></p>
-            <div class="mt-4 flex gap-2">
+            <div class="mt-4 flex gap-2 flex-wrap justify-center">
                 <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-white/5 text-white/80 border border-white/10"><?php echo getStatusText($item['status']); ?></span>
-                <?php if($isV): ?><span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-primary text-black flex items-center gap-1 shadow-lg shadow-primary/20">
+                <?php if($isV): ?>
+                <span class="text-[9px] font-black uppercase px-2 py-1 rounded bg-primary text-black flex items-center gap-1 shadow-lg shadow-primary/20">
                     <span class="material-symbols-outlined text-[10px] font-black">verified</span> <?php echo langs_text('सत्यापित', 'Verified'); ?>
-                </span><?php endif; ?>
+                </span>
+                <?php endif; ?>
             </div>
-            <div class="mt-4 text-[9px] font-black text-primary uppercase tracking-widest group-hover:gap-2 transition-all flex items-center justify-center"><?php echo langs_text('डोजियर देखें', 'View Dossier'); ?> <span class="material-symbols-outlined text-xs">arrow_forward</span></div>
-            </a>
+            <div class="mt-4 text-[9px] font-black text-primary uppercase tracking-widest group-hover:gap-2 transition-all flex items-center justify-center">
+                <?php echo langs_text('डोजियर देखें', 'View Dossier'); ?> 
+                <span class="material-symbols-outlined text-xs">arrow_forward</span>
+            </div>
+        </a>
         <?php else: ?>
         <a href="<?php echo $link; ?>" class="news-card rounded-[2rem] p-8 group">
             <div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface/20 group-hover:bg-primary group-hover:text-white transition-all mb-4 shadow-sm border border-primary/5">
@@ -723,7 +908,7 @@ tailwind.config = {
             <h4 class="text-primary text-[10px] font-black uppercase tracking-widest mb-6"><?php echo langs_text('रजिस्ट्री नेविगेशन','Registry Navigation'); ?></h4>
             <ul class="space-y-4 text-xs font-bold text-on-surface/60 uppercase tracking-tighter">
                 <li><a href="index.php" class="hover:text-primary transition"><?php echo langs_text('जिले देखें','Search Districts'); ?></a></li>
-                <li><a href="#" class="hover:text-primary transition"><?php echo langs_text('सत्यापित फ़ीड','Verified Feed'); ?></a></li>
+                <li><a href="?verified=1" class="hover:text-primary transition"><?php echo langs_text('सत्यापित फ़ीड','Verified Feed'); ?></a></li>
                 <li><a href="#" class="hover:text-primary transition"><?php echo langs_text('संग्रह 2026','Archive 2026'); ?></a></li>
             </ul>
         </div>
@@ -749,7 +934,7 @@ tailwind.config = {
     </div>
 </footer>
 
-<div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.95);z-index:9999;align-items:center;justify-content:center;backdrop-blur-md">
+<div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.95);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
     <div class="bg-white rounded-3xl p-10 flex flex-col items-center shadow-2xl border border-primary/20">
         <div class="loader"></div>
         <p class="text-xs font-black uppercase tracking-widest mt-4 text-primary animate-pulse"><?php echo langs_text('दस्तावेज़ तैयार किया जा रहा है', 'Generating Document'); ?></p>

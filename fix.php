@@ -71,9 +71,9 @@ $stmt = $external_db->query("
            b.block_name, b.block_name_hi,
            p.panchayat_name, p.panchayat_name_hi
     FROM candidates c
-    JOIN districts d ON c.district_id = d.id
-    JOIN blocks b ON c.block_id = b.id
-    JOIN panchayats p ON c.panchayat_id = p.id
+    LEFT JOIN districts d ON c.district_id = d.id
+    LEFT JOIN blocks b ON c.block_id = b.id
+    LEFT JOIN panchayats p ON c.panchayat_id = p.id
     ORDER BY c.id
 ");
 

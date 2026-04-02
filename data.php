@@ -217,12 +217,16 @@ function getImageUrl($photo_url) {
     
     // Define possible paths to check (for file existence)
     $pathsToCheck = [
-        $_SERVER['DOCUMENT_ROOT'] . $baseUrl . 'uploads/' . $filename,
-        $_SERVER['DOCUMENT_ROOT'] . '/uploads/' . $filename,
-        $_SERVER['DOCUMENT_ROOT'] . '/himachal/uploads/' . $filename,
-        $_SERVER['DOCUMENT_ROOT'] . '/admin/uploads/' . $filename,
-        __DIR__ . '/uploads/' . $filename,
-        __DIR__ . '/../uploads/' . $filename
+        $_SERVER['DOCUMENT_ROOT'] . $baseUrl . 'uploads/candidates/' . $filename,
+        $_SERVER['DOCUMENT_ROOT'] . $baseUrl . 'employee/uploads/candidates/' . $filename,
+        $_SERVER['DOCUMENT_ROOT'] . '/uploads/candidates/' . $filename,
+        $_SERVER['DOCUMENT_ROOT'] . '/employee/uploads/candidates/' . $filename,
+        $_SERVER['DOCUMENT_ROOT'] . '/himachal/uploads/candidates/' . $filename,
+        $_SERVER['DOCUMENT_ROOT'] . '/admin/uploads/candidates/' . $filename,
+        __DIR__ . '/uploads/candidates/' . $filename,
+        __DIR__ . '/../uploads/candidates/' . $filename,
+        __DIR__ . '/employee/uploads/candidates/' . $filename,
+        __DIR__ . '/uploads/' . $filename // Fallback
     ];
     
     // Check if file exists
@@ -233,12 +237,12 @@ function getImageUrl($photo_url) {
                 $webPath = str_replace($_SERVER['DOCUMENT_ROOT'], '', $path);
                 return $webPath . '?t=' . time();
             }
-            return $baseUrl . 'uploads/' . $filename . '?t=' . time();
+            return 'uploads/candidates/' . $filename . '?t=' . time();
         }
     }
     
     // If file not found, return the most likely path
-    return $baseUrl . 'uploads/' . $filename . '?t=' . time();
+    return 'uploads/candidates/' . $filename . '?t=' . time();
 }
 
 // Alternative function if the above doesn't work - use direct path
@@ -251,7 +255,7 @@ function getDirectImageUrl($photo_url) {
     $filename = basename($photo_url);
     
     // Return direct path to uploads folder
-    return 'uploads/' . $filename . '?t=' . time();
+    return 'uploads/candidates/' . $filename . '?t=' . time();
 }
 ?>
 <!DOCTYPE html>
@@ -596,6 +600,24 @@ function getDirectImageUrl($photo_url) {
             height: 100%;
             object-fit: cover;
             display: block;
+        }
+
+        /* Banner Watermark - Only for capture */
+        .banner-watermark {
+            position: absolute;
+            top: 50%;
+            left: 65%; /* Offset to center in the right display area */
+            transform: translate(-50%, -50%) rotate(-25deg);
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1;
+            width: 500px;
+            display: none;
+        }
+
+        .banner-watermark img {
+            width: 100%;
+            height: auto;
         }
 
         .candidate-photo .dummy-image {
@@ -1315,7 +1337,7 @@ function getDirectImageUrl($photo_url) {
     <div class="container">
         <!-- Success Message -->
         <?php if ($success && $newCandidateId): ?>
-            <div class="success-message">
+            <div data-html2canvas-ignore="true" class="success-message no-print">
                 <i class="fas fa-check-circle"></i>
                 <div>
                     <strong>सफलता!</strong> प्रत्याशी पंजीकृत हो गया है ID: <?php echo $newCandidateId; ?>
@@ -1324,7 +1346,7 @@ function getDirectImageUrl($photo_url) {
         <?php endif; ?>
 
         <!-- Statistics Cards -->
-        <div class="stats-wrapper">
+        <div data-html2canvas-ignore="true" class="stats-wrapper no-print">
             <div class="stat-item">
                 <div class="stat-number"><?php echo number_format($totalRecords); ?></div>
                 <div class="stat-label">कुल प्रत्याशी</div>
@@ -1352,7 +1374,7 @@ function getDirectImageUrl($photo_url) {
         </div>
 
         <!-- Filter Section -->
-        <div class="filter-section">
+        <div data-html2canvas-ignore="true" class="filter-section no-print">
             <form method="GET" id="filterForm">
                 <div class="filter-grid">
                     <div class="filter-group">
@@ -1453,8 +1475,16 @@ function getDirectImageUrl($photo_url) {
             </div>
 
             <div class="main-banner" id="bannerToDownload">
+                <!-- Watermark for capture -->
+                <div class="banner-watermark">
+                    <img src="uploads/official_enoxx_logo.png" alt="Enoxx Watermark">
+                </div>
+                
                 <!-- Left Sidebar with 5 Candidates -->
                 <div class="banner-sidebar">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="uploads/official_enoxx_logo.png" alt="Enoxx News" style="max-width: 100%; height: auto; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+                    </div>
                     <div class="banner-title">
                         <h1>
                             पंचायत
@@ -1482,19 +1512,27 @@ function getDirectImageUrl($photo_url) {
                             if ($candidate) {
                                 // Try both functions to get image URL
                                 if (!empty($candidate['photo_url'])) {
-                                    // First try direct path
-                                    $imageUrl = 'uploads/' . basename($candidate['photo_url']) . '?t=' . time();
+                                    // Try candidates subdirectory first
+                                    $filename = basename($candidate['photo_url']);
+                                    $imageUrl = 'uploads/candidates/' . $filename . '?t=' . time();
                                     
                                     // Check if file exists
-                                    $filePath = __DIR__ . '/uploads/' . basename($candidate['photo_url']);
+                                    $filePath = __DIR__ . '/uploads/candidates/' . $filename;
                                     if (file_exists($filePath)) {
                                         $hasImage = true;
                                     } else {
-                                        // Try alternative paths
-                                        $altPath = $_SERVER['DOCUMENT_ROOT'] . '/uploads/' . basename($candidate['photo_url']);
-                                        if (file_exists($altPath)) {
+                                        // Fallback to uploads/ root
+                                        $fallbackPath = __DIR__ . '/uploads/' . $filename;
+                                        if (file_exists($fallbackPath)) {
                                             $hasImage = true;
-                                            $imageUrl = '/uploads/' . basename($candidate['photo_url']) . '?t=' . time();
+                                            $imageUrl = 'uploads/' . $filename . '?t=' . time();
+                                        } else {
+                                            // Try server root
+                                            $altPath = $_SERVER['DOCUMENT_ROOT'] . '/uploads/candidates/' . $filename;
+                                            if (file_exists($altPath)) {
+                                                $hasImage = true;
+                                                $imageUrl = '/uploads/candidates/' . $filename . '?t=' . time();
+                                            }
                                         }
                                     }
                                 }
@@ -1849,24 +1887,21 @@ function getDirectImageUrl($photo_url) {
         }, 500);
     });
     
-    // Download banner as image
     function downloadBanner(event, format = 'png') {
         event.preventDefault();
         
         const btn = event.currentTarget;
         const banner = document.getElementById('bannerToDownload');
-        
-        // Save original button content
         const originalContent = btn.innerHTML;
         
-        // Show loading state
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> बैनर बन रहा...';
         btn.disabled = true;
         
-        // Close download menu
-        document.getElementById('downloadMenu').classList.remove('show');
+        if (document.getElementById('downloadMenu')) {
+            document.getElementById('downloadMenu').classList.remove('show');
+        }
         
-        // Preload images to ensure they're loaded
+        // Ensure all images are fully loaded before capture
         const images = banner.querySelectorAll('img');
         const imagePromises = Array.from(images).map(img => {
             if (img.complete) return Promise.resolve();
@@ -1877,25 +1912,28 @@ function getDirectImageUrl($photo_url) {
         });
         
         Promise.all(imagePromises).then(() => {
-            // Use html2canvas to capture the banner
-            html2canvas(banner, {
-                scale: 2,
-                backgroundColor: '#ffffff',
-                allowTaint: false,
-                useCORS: true,
-                logging: false,
-                windowWidth: 1920,
-                windowHeight: 1080,
-                onclone: function(clonedDoc) {
-                    // Fix any image paths in the cloned document
-                    const clonedImages = clonedDoc.querySelectorAll('img');
-                    clonedImages.forEach(img => {
-                        if (img.src) {
-                            img.crossOrigin = 'anonymous';
+            // Wait slightly more for rendering stability
+            setTimeout(() => {
+                html2canvas(banner, {
+                    scale: 3, 
+                    backgroundColor: '#ffffff',
+                    allowTaint: false,
+                    useCORS: true,
+                    logging: false,
+                    onclone: function(clonedDoc) {
+                        const watermark = clonedDoc.querySelector('.banner-watermark');
+                        if (watermark) {
+                            watermark.style.display = 'block';
+                            watermark.style.opacity = '0.04';
                         }
-                    });
-                }
-            }).then(canvas => {
+                        
+                        const clonedImages = clonedDoc.querySelectorAll('img');
+                        clonedImages.forEach(img => {
+                            img.crossOrigin = 'anonymous';
+                            img.style.opacity = '1';
+                        });
+                    }
+                }).then(canvas => {
                 // Create download link
                 const link = document.createElement('a');
                 link.download = `panchayat_banner_<?php echo date('Ymd_His'); ?>.${format}`;

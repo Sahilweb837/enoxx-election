@@ -82,12 +82,25 @@ try {
             throw new Exception('Block already exists in this district');
         }
         
+        // Get jila_parishad_id for the district
+        $jp = $pdo->prepare("SELECT id FROM jila_parishad WHERE district_id = ? LIMIT 1");
+        $jp->execute([$district_id]);
+        $jila_parishad_id = $jp->fetchColumn();
+        
+        if (!$jila_parishad_id) {
+            $jila_parishad_id = $pdo->query("SELECT id FROM jila_parishad LIMIT 1")->fetchColumn();
+        }
+        
+        if (!$jila_parishad_id) {
+            throw new Exception('No Jila Parishad found for this region! Contact Admin.');
+        }
+        
         // Create slug
         $slug = createUniqueSlug($pdo, $name_en, 'blocks', 'slug');
         
         // Insert
-        $stmt = $pdo->prepare("INSERT INTO blocks (district_id, block_name, block_name_hi, slug) VALUES (?, ?, ?, ?)");
-        if (!$stmt->execute([$district_id, $name_en, $name_hi, $slug])) {
+        $stmt = $pdo->prepare("INSERT INTO blocks (district_id, jila_parishad_id, block_name, block_name_hi, slug) VALUES (?, ?, ?, ?, ?)");
+        if (!$stmt->execute([$district_id, $jila_parishad_id, $name_en, $name_hi, $slug])) {
             throw new Exception('Failed to add block');
         }
         
