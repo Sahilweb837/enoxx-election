@@ -1,6 +1,8 @@
  <?php
 // config.php - Database configuration
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Database configuration
 define('DB_HOST', 'localhost');
@@ -272,9 +274,17 @@ function createTablesIfNotExist($pdo) {
             )
         ");
         
+        // Add Performance Indexes for Scaling (20,000+ entries)
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_candidates_location ON candidates (district_id, block_id, panchayat_id)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_candidates_created_at ON candidates (created_at DESC)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_candidates_created_by ON candidates (created_by)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_candidates_status ON candidates (whatsapp_verified, approval_status)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs (created_at DESC)");
+        $pdo->exec("CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs (user_id)");
+        
         return true;
     } catch (Exception $e) {
-        error_log("Table creation error: " . $e->getMessage());
+        error_log("Table creation or indexing error: " . $e->getMessage());
         return false;
     }
 }

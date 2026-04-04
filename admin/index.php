@@ -1,43 +1,85 @@
  <?php
-// session_start();
+// admin/index.php - Complete Working Login with Debugging
+session_start();
 require_once '../config.php';
 
 $error = '';
 
+// Check if admin_users table exists, if not create it
+try {
+    $checkTable = $pdo->query("SHOW TABLES LIKE 'admin_users'");
+    if ($checkTable->rowCount() == 0) {
+        // Create table
+        $pdo->exec("
+            CREATE TABLE `admin_users` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `username` VARCHAR(50) NOT NULL,
+                `password` VARCHAR(255) NOT NULL,
+                `full_name` VARCHAR(100) NOT NULL,
+                `email` VARCHAR(100) DEFAULT NULL,
+                `role` VARCHAR(50) DEFAULT 'admin',
+                `status` VARCHAR(20) DEFAULT 'active',
+                `last_login` DATETIME DEFAULT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `username` (`username`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        
+        // Insert default admin
+        $hashedPassword = password_hash('saklani@2026', PASSWORD_DEFAULT);
+        $insert = $pdo->prepare("INSERT INTO admin_users (username, password, full_name, email, role, status) VALUES (?, ?, ?, ?, 'admin', 'active')");
+        $insert->execute(['ajay_saklani', $hashedPassword, 'Ajay Saklani', 'ajay.saklani@enoxx.id']);
+    }
+} catch(PDOException $e) {
+    // Table might already exist
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
+    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     
-    $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ? AND status = 'active'");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
-    
-    if ($user && password_verify($password, $user['password'])) {
-        // Set session variables
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_type'] = 'admin';
-        $_SESSION['admin_id'] = $user['id'];
-        $_SESSION['admin_username'] = $user['username'];
-        $_SESSION['admin_name'] = $user['full_name'];
-        $_SESSION['admin_role'] = $user['role'];
-        $_SESSION['admin_logged_in'] = true;
-        $_SESSION['login_time'] = time();
-        
-        // Update last login
-        $stmt = $pdo->prepare("UPDATE admin_users SET last_login = NOW() WHERE id = ?");
-        $stmt->execute([$user['id']]);
-        
-        // Debug - uncomment to check if redirecting
-        // echo "Redirecting to dashboard.php";
-        // exit;
-        
-        header('Location: dashboard.php');
-        exit;
+    if (empty($username) || empty($password)) {
+        $error = 'Please enter both username and password';
     } else {
-        $error = 'Invalid username or password';
+        try {
+            // Get user from database
+            $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ? AND status = 'active'");
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
+            
+            // Debug info (remove in production)
+            if (!$user) {
+                error_log("User not found: $username");
+                $error = 'Invalid username or password';
+            } elseif (password_verify($password, $user['password'])) {
+                // Set session variables
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_type'] = 'admin';
+                $_SESSION['admin_id'] = $user['id'];
+                $_SESSION['admin_username'] = $user['username'];
+                $_SESSION['admin_name'] = $user['full_name'];
+                $_SESSION['admin_role'] = $user['role'];
+                $_SESSION['admin_logged_in'] = true;
+                $_SESSION['login_time'] = time();
+                
+                // Update last login
+                $updateStmt = $pdo->prepare("UPDATE admin_users SET last_login = NOW() WHERE id = ?");
+                $updateStmt->execute([$user['id']]);
+                
+                header('Location: dashboard.php');
+                exit;
+            } else {
+                error_log("Password verification failed for: $username");
+                $error = 'Invalid username or password';
+            }
+        } catch (PDOException $e) {
+            $error = 'Database error: ' . $e->getMessage();
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,7 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             overflow: hidden;
         }
 
-        /* Particles effect */
         #particles-canvas {
             position: fixed;
             top: 0;
@@ -192,16 +233,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 14px;
         }
 
-        .success-message {
-            background: #d4edda;
-            color: #155724;
-            padding: 12px 15px;
+        .info-box {
+            background: #e8f4f8;
+            padding: 15px;
             border-radius: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .info-box strong {
+            color: #e67e22;
         }
 
         .back-link {
@@ -222,18 +264,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #e67e22;
         }
 
-        .test-credentials {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #6c757d;
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
         }
 
-        .test-credentials strong {
-            color: #e67e22;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -260,7 +301,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label>Username</label>
                     <div class="input-group">
                         <i class="fas fa-user"></i>
-                        <input type="text" name="username" id="username" required placeholder="Enter username">
+                        <input type="text" name="username" id="username" required placeholder="Enter username" value="ajay_saklani">
                     </div>
                 </div>
 
@@ -268,7 +309,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label>Password</label>
                     <div class="input-group">
                         <i class="fas fa-lock"></i>
-                        <input type="password" name="password" id="password" required placeholder="Enter password">
+                        <input type="password" name="password" id="password" required placeholder="Enter password" value="saklani@2026">
                     </div>
                 </div>
 
@@ -277,10 +318,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </button>
             </form>
 
-            <div class="test-credentials">
+            <div class="info-box">
                 <i class="fas fa-info-circle"></i>
-                <p>Demo Credentials:</p>
-                <p><strong>admin</strong> / <strong>admin123</strong></p>
+                <p><strong>Login Credentials:</strong></p>
+                <p>Username: <strong>ajay_saklani</strong> | Password: <strong>saklani@2026</strong></p>
             </div>
 
             <div class="back-link">
@@ -345,7 +386,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 particle.draw();
             }
             
-            // Draw connecting lines
             for (let i = 0; i < particles.length; i++) {
                 for (let j = i + 1; j < particles.length; j++) {
                     const dx = particles[i].x - particles[j].x;
@@ -370,22 +410,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         initParticles();
         animateParticles();
         
-        // Form loading state
         const loginForm = document.getElementById('loginForm');
         const loginBtn = document.getElementById('loginBtn');
         
         if (loginForm) {
             loginForm.addEventListener('submit', function() {
-                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+                loginBtn.innerHTML = '<div class="spinner"></div> Logging in...';
                 loginBtn.disabled = true;
             });
         }
-        
-        // Auto-fill for testing
-        if (window.location.hostname === 'localhost') {
-            document.getElementById('username').value = 'admin';
-            document.getElementById('password').value = 'admin123';
-        }
     </script>
 </body>
-</html> 
+</html>

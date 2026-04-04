@@ -22,11 +22,12 @@ $error = '';
 // Create Employee
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'create_employee') {
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        $full_name = trim($_POST['full_name']);
-        $email = trim($_POST['email']);
-        $phone = trim($_POST['phone']);
+        $username = isset($_POST['username']) ? trim($_POST['username']) : '';
+        $password = isset($_POST['password']) ? $_POST['password'] : '';
+        $full_name = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
+        $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+        $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+        $role = isset($_POST['role']) ? $_POST['role'] : 'data_entry';
         
         // Validation
         $errors = [];
@@ -42,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (empty($errors)) {
             $employeeId = 'EMP' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $role = $_POST['role'] ?? 'data_entry';
             
             $stmt = $pdo->prepare("
                 INSERT INTO employees (employee_id, username, password, full_name, email, phone, role, is_active) 
@@ -61,45 +61,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     
     // Update Employee Status (Block/Unblock)
     elseif ($_POST['action'] === 'update_status') {
-        $employee_id = $_POST['employee_id'];
-        $new_is_active = ($_POST['status'] === 'active') ? 1 : 0;
+        $employee_id = isset($_POST['employee_id']) ? (int)$_POST['employee_id'] : 0;
+        $status = isset($_POST['status']) ? $_POST['status'] : '';
+        $new_is_active = ($status === 'active') ? 1 : 0;
         
-        $stmt = $pdo->prepare("UPDATE employees SET is_active = ? WHERE id = ?");
-        if ($stmt->execute([$new_is_active, $employee_id])) {
-            $message = "Employee status updated successfully";
+        if ($employee_id > 0) {
+            $stmt = $pdo->prepare("UPDATE employees SET is_active = ? WHERE id = ?");
+            if ($stmt->execute([$new_is_active, $employee_id])) {
+                $message = "Employee status updated successfully";
+            } else {
+                $error = "Failed to update status";
+            }
         } else {
-            $error = "Failed to update status";
+            $error = "Invalid employee ID";
         }
     }
     
     // Reset Employee Password
     elseif ($_POST['action'] === 'reset_password') {
-        $employee_id = $_POST['employee_id'];
-        $new_password = $_POST['new_password'];
-        $hashedPassword = password_hash($new_password, PASSWORD_DEFAULT);
+        $employee_id = isset($_POST['employee_id']) ? (int)$_POST['employee_id'] : 0;
+        $new_password = isset($_POST['new_password']) ? $_POST['new_password'] : '';
         
-        $stmt = $pdo->prepare("UPDATE employees SET password = ? WHERE id = ?");
-        if ($stmt->execute([$hashedPassword, $employee_id])) {
-            $message = "Password reset successfully! New password: $new_password";
+        if ($employee_id > 0 && !empty($new_password)) {
+            $hashedPassword = password_hash($new_password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("UPDATE employees SET password = ? WHERE id = ?");
+            if ($stmt->execute([$hashedPassword, $employee_id])) {
+                $message = "Password reset successfully! New password: $new_password";
+            } else {
+                $error = "Failed to reset password";
+            }
         } else {
-            $error = "Failed to reset password";
+            $error = "Invalid employee ID or password";
         }
     }
     
     // Delete Employee
     elseif ($_POST['action'] === 'delete_employee') {
-        $employee_id = $_POST['employee_id'];
+        $employee_id = isset($_POST['employee_id']) ? (int)$_POST['employee_id'] : 0;
         
-        // First, update candidates to remove created_by reference
-        $stmt = $pdo->prepare("UPDATE candidates SET created_by = NULL WHERE created_by = ?");
-        $stmt->execute([$employee_id]);
-        
-        // Then delete employee
-        $stmt = $pdo->prepare("DELETE FROM employees WHERE id = ?");
-        if ($stmt->execute([$employee_id])) {
-            $message = "Employee deleted successfully";
+        if ($employee_id > 0) {
+            // First, update candidates to remove created_by reference
+            $stmt = $pdo->prepare("UPDATE candidates SET created_by = NULL WHERE created_by = ?");
+            $stmt->execute([$employee_id]);
+            
+            // Then delete employee
+            $stmt = $pdo->prepare("DELETE FROM employees WHERE id = ?");
+            if ($stmt->execute([$employee_id])) {
+                $message = "Employee deleted successfully";
+            } else {
+                $error = "Failed to delete employee";
+            }
         } else {
-            $error = "Failed to delete employee";
+            $error = "Invalid employee ID";
         }
     }
 }
@@ -498,11 +511,6 @@ $statusCounts = $pdo->query("
         </div>
     </div>
 
-            <p class="session-text">Your secure session has timed out due to inactivity. Please login again to continue your work.</p>
-            <button class="session-btn" onclick="window.location.reload()">Login Again</button>
-        </div>
-    </div>
-
     <div class="main-content">
         <div class="top-header">
             <div class="user-profile" onclick="toggleDropdown()">
@@ -572,390 +580,397 @@ $statusCounts = $pdo->query("
                             <th>Verified</th>
                             <th>Status</th>
                             <th>Actions</th>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($employees as $emp): ?>
-                            <tr>
-                                <td><?php echo $emp['id']; ?></td>
-                                <td><strong><?php echo htmlspecialchars($emp['employee_id']); ?></strong></td>
-                                <td><?php echo htmlspecialchars($emp['username']); ?></td>
-                                <td><?php echo htmlspecialchars($emp['full_name']); ?></td>
-                                <td><?php echo htmlspecialchars($emp['email']); ?></td>
-                                <td><?php echo htmlspecialchars($emp['phone']); ?></td>
-                                <td><span class="badge badge-primary"><?php echo $emp['total_entries']; ?></span></td>
-                                <td><span class="badge badge-success"><?php echo $emp['verified_entries']; ?></span></td>
-                                <td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($employees as $emp): ?>
+                        <tr>
+                            <td><?php echo $emp['id']; ?></td>
+                            <td><strong><?php echo htmlspecialchars($emp['employee_id']); ?></strong></td>
+                            <td><?php echo htmlspecialchars($emp['username']); ?></td>
+                            <td><?php echo htmlspecialchars($emp['full_name']); ?></td>
+                            <td><?php echo htmlspecialchars($emp['email']); ?></td>
+                            <td><?php echo htmlspecialchars($emp['phone']); ?></td>
+                            <td><span class="badge badge-primary"><?php echo $emp['total_entries']; ?></span></td>
+                            <td><span class="badge badge-success"><?php echo $emp['verified_entries']; ?></span></td>
+                            <td>
+                                <?php if ($emp['is_active']): ?>
+                                    <span class="badge badge-success">Active</span>
+                                <?php else: ?>
+                                    <span class="badge badge-blocked">Blocked</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                                     <?php if ($emp['is_active']): ?>
-                                        <span class="badge badge-success">Active</span>
+                                        <button class="btn btn-warning btn-sm" onclick="blockEmployee(<?php echo $emp['id']; ?>)">
+                                            <i class="fas fa-ban"></i> Block
+                                        </button>
                                     <?php else: ?>
-                                        <span class="badge badge-blocked">Blocked</span>
+                                        <button class="btn btn-primary btn-sm" onclick="unblockEmployee(<?php echo $emp['id']; ?>)">
+                                            <i class="fas fa-check-circle"></i> Unblock
+                                        </button>
                                     <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                        <?php if ($emp['is_active']): ?>
-                                            <button class="btn btn-warning btn-sm" onclick="blockEmployee(<?php echo $emp['id']; ?>)">
-                                                <i class="fas fa-ban"></i> Block
-                                            </button>
-                                        <?php else: ?>
-                                            <button class="btn btn-primary btn-sm" onclick="unblockEmployee(<?php echo $emp['id']; ?>)">
-                                                <i class="fas fa-check-circle"></i> Unblock
-                                            </button>
-                                        <?php endif; ?>
-                                        <button class="btn btn-primary btn-sm" onclick="resetPassword(<?php echo $emp['id']; ?>, '<?php echo $emp['username']; ?>')">
-                                            <i class="fas fa-key"></i> Reset
-                                        </button>
-                                        <button class="btn btn-danger btn-sm" onclick="deleteEmployee(<?php echo $emp['id']; ?>, '<?php echo $emp['full_name']; ?>')">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                                    <button class="btn btn-primary btn-sm" onclick="resetPassword(<?php echo $emp['id']; ?>, '<?php echo $emp['username']; ?>')">
+                                        <i class="fas fa-key"></i> Reset
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteEmployee(<?php echo $emp['id']; ?>, '<?php echo $emp['full_name']; ?>')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
 
-                <!-- Recent Candidates with Creator Info -->
+            <!-- Recent Candidates with Creator Info -->
+            <div class="data-table">
+                <h3><i class="fas fa-clock"></i> Recent Candidates (Showing who added them)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Added By</th>
+                            <th>Jila Parishad/Pradhan</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recentCandidates as $candidate): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($candidate['candidate_name_en'] ?? 'N/A'); ?></td>
+                            <td>
+                                <?php if ($candidate['created_by_name']): ?>
+                                    <strong><?php echo htmlspecialchars($candidate['created_by_name']); ?></strong>
+                                    <br><small><?php echo htmlspecialchars($candidate['created_by_username']); ?></small>
+                                <?php else: ?>
+                                    <span class="badge">System</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo htmlspecialchars($candidate['jila_parishad_pradhan_text'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($candidate['panchayat_name'] ?? 'N/A'); ?></td>
+                            <td>
+                                <?php if ($candidate['transaction_id']): ?>
+                                    <span class="verified-badge" title="TX ID: <?php echo htmlspecialchars($candidate['transaction_id']); ?>">
+                                        <i class="fas fa-check-circle"></i> Verified
+                                    </span>
+                                <?php else: ?>
+                                    <span class="pending-badge"><i class="fas fa-clock"></i> Pending</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Status Chart -->
                 <div class="data-table">
-                    <h3><i class="fas fa-clock"></i> Recent Candidates (Showing who added them)</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Added By</th>
-                                <th>Jila Parishad/Pradhan</th>
-                                <th>Location</th>
-                                <th>Status</th>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($recentCandidates as $candidate): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($candidate['candidate_name_en'] ?? 'N/A'); ?></td>
-                                    <td>
-                                        <?php if ($candidate['created_by_name']): ?>
-                                            <strong><?php echo htmlspecialchars($candidate['created_by_name']); ?></strong>
-                                            <br><small><?php echo htmlspecialchars($candidate['created_by_username']); ?></small>
-                                        <?php else: ?>
-                                            <span class="badge">System</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($candidate['jila_parishad_pradhan_text'] ?? 'N/A'); ?></td>
-                                    <td><?php echo htmlspecialchars($candidate['panchayat_name'] ?? 'N/A'); ?></td>
-                                    <td>
-                                        <?php if ($candidate['transaction_id']): ?>
-                                            <span class="verified-badge" title="TX ID: <?php echo htmlspecialchars($candidate['transaction_id']); ?>">
-                                                <i class="fas fa-check-circle"></i> Verified
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="pending-badge"><i class="fas fa-clock"></i> Pending</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="dashboard-grid">
-                        <!-- Status Chart -->
-                        <div class="data-table">
-                            <h3><i class="fas fa-chart-pie"></i> Candidates by Status</h3>
-                            <div class="chart-placeholder" style="height: 200px; display: flex; align-items: flex-end; gap: 15px; padding: 20px 0;">
-                                <?php
-                                $maxCount = 0;
-                                $statusData = [];
-                                foreach ($statusCounts as $stat) {
-                                    $statusData[$stat['status']] = $stat['count'];
-                                    if ($stat['count'] > $maxCount) $maxCount = $stat['count'];
-                                }
-                                $statuses = ['contesting', 'leading', 'winner', 'runner_up', 'withdrawn'];
-                                foreach ($statuses as $status):
-                                    $count = isset($statusData[$status]) ? $statusData[$status] : 0;
-                                    $height = $maxCount > 0 ? ($count / $maxCount) * 150 : 20;
-                                    $height = max(20, $height);
-                                ?>
-                                <div style="flex: 1; text-align: center;">
-                                    <div style="height: <?php echo $height; ?>px; background: linear-gradient(to top, #e67e22, #f39c12); border-radius: 8px 8px 0 0; position: relative;">
-                                        <span style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 0.85em; font-weight: 600;"><?php echo $count; ?></span>
-                                    </div>
-                                    <div style="margin-top: 10px; font-size: 0.85em;"><?php echo ucfirst(str_replace('_', ' ', $status)); ?></div>
-                                </div>
-                                <?php endforeach; ?>
+                    <h3><i class="fas fa-chart-pie"></i> Candidates by Status</h3>
+                    <div class="chart-placeholder" style="height: 200px; display: flex; align-items: flex-end; gap: 15px; padding: 20px 0;">
+                        <?php
+                        $maxCount = 0;
+                        $statusData = [];
+                        foreach ($statusCounts as $stat) {
+                            $statusData[$stat['status']] = $stat['count'];
+                            if ($stat['count'] > $maxCount) $maxCount = $stat['count'];
+                        }
+                        $statuses = ['contesting', 'leading', 'winner', 'runner_up', 'withdrawn'];
+                        foreach ($statuses as $status):
+                            $count = isset($statusData[$status]) ? $statusData[$status] : 0;
+                            $height = $maxCount > 0 ? ($count / $maxCount) * 150 : 20;
+                            $height = max(20, $height);
+                        ?>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="height: <?php echo $height; ?>px; background: linear-gradient(to top, #e67e22, #f39c12); border-radius: 8px 8px 0 0; position: relative;">
+                                <span style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 0.85em; font-weight: 600;"><?php echo $count; ?></span>
                             </div>
+                            <div style="margin-top: 10px; font-size: 0.85em;"><?php echo ucfirst(str_replace('_', ' ', $status)); ?></div>
                         </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
 
-                        <!-- Summary Stats -->
-                        <div class="data-table">
-                            <h3><i class="fas fa-chart-line"></i> Quick Stats</h3>
-                            <div style="padding: 15px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                                    <span>Total Candidates:</span>
-                                    <strong><?php echo $totalCandidates; ?></strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                                    <span>Verified Candidates:</span>
-                                    <strong class="text-success"><?php echo $verifiedCandidates; ?></strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                                    <span>Pending Verification:</span>
-                                    <strong class="text-warning"><?php echo $pendingCandidates; ?></strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                                    <span>Active Employees:</span>
-                                    <strong><?php echo $activeEmployees; ?></strong>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span>Blocked Employees:</span>
-                                    <strong><?php echo $blockedEmployees; ?></strong>
-                                </div>
-                            </div>
+                <!-- Summary Stats -->
+                <div class="data-table">
+                    <h3><i class="fas fa-chart-line"></i> Quick Stats</h3>
+                    <div style="padding: 15px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                            <span>Total Candidates:</span>
+                            <strong><?php echo $totalCandidates; ?></strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                            <span>Verified Candidates:</span>
+                            <strong class="text-success"><?php echo $verifiedCandidates; ?></strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                            <span>Pending Verification:</span>
+                            <strong class="text-warning"><?php echo $pendingCandidates; ?></strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                            <span>Active Employees:</span>
+                            <strong><?php echo $activeEmployees; ?></strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Blocked Employees:</span>
+                            <strong><?php echo $blockedEmployees; ?></strong>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Create Employee Modal -->
-            <div class="modal" id="createEmployeeModal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-user-plus"></i> Create New Employee</h3>
-                        <button class="modal-close" onclick="closeModal('createEmployee')">&times;</button>
-                    </div>
-                    <form method="POST" action="">
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label>Username *</label>
-                                <input type="text" name="username" required minlength="4" placeholder="Enter username">
-                                <small>Minimum 4 characters</small>
-                            </div>
-                            <div class="form-group">
-                                <label>Full Name *</label>
-                                <input type="text" name="full_name" required placeholder="Enter full name">
-                            </div>
-                            <div class="form-group">
-                                <label>Email</label>
-                                <input type="email" name="email" placeholder="Enter email address">
-                            </div>
-                            <div class="form-group">
-                                <label>Phone</label>
-                                <input type="text" name="phone" placeholder="Enter phone number">
-                            </div>
-                            <div class="form-group">
-                                <label>Role *</label>
-                                <select name="role" required>
-                                    <option value="data_entry">Data Entry Operator</option>
-                                    <option value="supervisor">Supervisor</option>
-                                    <option value="manager">Manager</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Password *</label>
-                                <input type="password" name="password" required minlength="6" placeholder="Enter password">
-                                <small>Minimum 6 characters</small>
-                            </div>
-                            <input type="hidden" name="action" value="create_employee">
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-warning" onclick="closeModal('createEmployee')">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Create Employee</button>
-                        </div>
-                    </form>
-                </div>
+    <!-- Create Employee Modal -->
+    <div class="modal" id="createEmployeeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Create New Employee</h3>
+                <button class="modal-close" onclick="closeModal('createEmployee')">&times;</button>
             </div>
-
-            <!-- Reset Password Modal -->
-            <div class="modal" id="resetPasswordModal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-key"></i> Reset Employee Password</h3>
-                        <button class="modal-close" onclick="closeModal('resetPassword')">&times;</button>
+            <form method="POST" action="">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" name="username" required minlength="4" placeholder="Enter username">
+                        <small>Minimum 4 characters</small>
                     </div>
-                    <form method="POST" action="" id="resetPasswordForm">
-                        <div class="modal-body">
-                            <p>Reset password for: <strong id="resetUsername"></strong></p>
-                            <div class="form-group">
-                                <label>New Password</label>
-                                <input type="text" name="new_password" id="newPassword" required minlength="6" class="form-control">
-                                <small>Click generate for random password</small>
-                                <button type="button" class="btn btn-primary btn-sm" style="margin-top: 5px;" onclick="generateRandomPassword()">Generate Random Password</button>
-                            </div>
-                            <input type="hidden" name="employee_id" id="resetEmployeeId">
-                            <input type="hidden" name="action" value="reset_password">
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-warning" onclick="closeModal('resetPassword')">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Reset Password</button>
-                        </div>
-                    </form>
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="full_name" required placeholder="Enter full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" placeholder="Enter email address">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" name="phone" placeholder="Enter phone number">
+                    </div>
+                    <div class="form-group">
+                        <label>Role *</label>
+                        <select name="role" required>
+                            <option value="data_entry">Data Entry Operator</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="manager">Manager</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" name="password" required minlength="6" placeholder="Enter password">
+                        <small>Minimum 6 characters</small>
+                    </div>
+                    <input type="hidden" name="action" value="create_employee">
                 </div>
-            </div>
-
-            <!-- Refresh Confirmation Modal -->
-            <div class="modal" id="refreshConfirmModal">
-                <div class="modal-content" style="max-width: 400px; text-align: center;">
-                    <div class="modal-header" style="background: #e67e22;">
-                        <h3>Confirm Refresh</h3>
-                        <button class="modal-close" onclick="closeModal('refreshConfirm')">&times;</button>
-                    </div>
-                    <div class="modal-body" style="padding: 30px 20px;">
-                        <div style="font-size: 3em; color: #e67e22; margin-bottom: 20px;">
-                            <i class="fas fa-sync-alt fa-spin"></i>
-                        </div>
-                        <p style="font-size: 1.1em; color: #1e293b; margin-bottom: 10px;"><strong>Are you sure you want to refresh? / क्या आप वाकई रिफ्रेश करना चाहते हैं?</strong></p>
-                        <p style="color: #64748b; font-size: 0.95em; line-height: 1.6;">
-                            Your current session will be closed and any unsaved data will be lost.<br>
-                            आपका वर्तमान सत्र बंद कर दिया जाएगा और कोई भी असुरक्षित डेटा खो जाएगा।
-                        </p>
-                    </div>
-                    <div class="modal-footer" style="display: flex; gap: 10px; justify-content: center;">
-                        <button type="button" class="btn btn-warning" onclick="closeModal('refreshConfirm')" style="flex: 1;">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="executeRefresh()" style="flex: 1; background: #e67e22;">Yes, Refresh</button>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-warning" onclick="closeModal('createEmployee')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Employee</button>
                 </div>
-            </div>
+            </form>
+        </div>
+    </div>
 
-            <!-- Session Expired Modal -->
-            <div class="session-modal" id="sessionExpiredModal">
-                <div class="session-card">
-                    <div class="session-icon"><i class="fas fa-user-clock"></i></div>
-                    <h3 class="session-title">Session Expired</h3>
-                    <p class="session-text">For your security, the session has timed out. Please login again to continue.</p>
-                    <button class="session-btn" onclick="window.location.href='index.php'">Login Again</button>
+    <!-- Reset Password Modal -->
+    <div class="modal" id="resetPasswordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i> Reset Employee Password</h3>
+                <button class="modal-close" onclick="closeModal('resetPassword')">&times;</button>
+            </div>
+            <form method="POST" action="" id="resetPasswordForm">
+                <div class="modal-body">
+                    <p>Reset password for: <strong id="resetUsername"></strong></p>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="text" name="new_password" id="newPassword" required minlength="6" class="form-control">
+                        <small>Click generate for random password</small>
+                        <button type="button" class="btn btn-primary btn-sm" style="margin-top: 5px;" onclick="generateRandomPassword()">Generate Random Password</button>
+                    </div>
+                    <input type="hidden" name="employee_id" id="resetEmployeeId">
+                    <input type="hidden" name="action" value="reset_password">
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-warning" onclick="closeModal('resetPassword')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Refresh Confirmation Modal -->
+    <div class="modal" id="refreshConfirmModal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="background: #e67e22;">
+                <h3>Confirm Refresh</h3>
+                <button class="modal-close" onclick="closeModal('refreshConfirm')">&times;</button>
             </div>
+            <div class="modal-body" style="padding: 30px 20px;">
+                <div style="font-size: 3em; color: #e67e22; margin-bottom: 20px;">
+                    <i class="fas fa-sync-alt fa-spin"></i>
+                </div>
+                <p style="font-size: 1.1em; color: #1e293b; margin-bottom: 10px;"><strong>Are you sure you want to refresh? / क्या आप वाकई रिफ्रेश करना चाहते हैं?</strong></p>
+                <p style="color: #64748b; font-size: 0.95em; line-height: 1.6;">
+                    Your current session will be closed and any unsaved data will be lost.<br>
+                    आपका वर्तमान सत्र बंद कर दिया जाएगा और कोई भी असुरक्षित डेटा खो जाएगा।
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: center;">
+                <button type="button" class="btn btn-warning" onclick="closeModal('refreshConfirm')" style="flex: 1;">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="executeRefresh()" style="flex: 1; background: #e67e22;">Yes, Refresh</button>
+            </div>
+        </div>
+    </div>
 
-            <script>
-                function toggleDropdown() {
-                    document.getElementById('dropdownMenu').classList.toggle('active');
-                }
+    <!-- Session Expired Modal -->
+    <div class="session-modal" id="sessionExpiredModal">
+        <div class="session-card">
+            <div class="session-icon"><i class="fas fa-user-clock"></i></div>
+            <h3 class="session-title">Session Expired</h3>
+            <p class="session-text">For your security, the session has timed out. Please login again to continue.</p>
+            <button class="session-btn" onclick="window.location.href='index.php'">Login Again</button>
+        </div>
+    </div>
 
-                window.addEventListener('click', function(e) {
-                    const dropdown = document.getElementById('dropdownMenu');
-                    const userProfile = document.querySelector('.user-profile');
-                    if (dropdown && userProfile && !userProfile.contains(e.target) && !dropdown.contains(e.target)) {
-                        dropdown.classList.remove('active');
-                    }
-                });
+    <script>
+        function toggleDropdown() {
+            document.getElementById('dropdownMenu').classList.toggle('active');
+        }
 
-                function viewCandidates() {
-                    window.location.href = '../candidates_list.php';
-                }
+        window.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('dropdownMenu');
+            const userProfile = document.querySelector('.user-profile');
+            if (dropdown && userProfile && !userProfile.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
 
-                function openCreateEmployeeModal() {
-                    document.getElementById('createEmployeeModal').classList.add('active');
-                }
+        function viewCandidates() {
+            window.location.href = '../candidates_list.php';
+        }
 
-                function closeModal(modalId) {
-                    document.getElementById(modalId + 'Modal').classList.remove('active');
-                }
+        function openCreateEmployeeModal() {
+            document.getElementById('createEmployeeModal').classList.add('active');
+        }
 
-                function blockEmployee(id) {
-                    if (confirm('Are you sure you want to block this employee? They will not be able to login.')) {
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.innerHTML = `
-                            <input type="hidden" name="action" value="update_status">
-                            <input type="hidden" name="employee_id" value="${id}">
-                            <input type="hidden" name="status" value="blocked">
-                        `;
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                }
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId + 'Modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
 
-                function unblockEmployee(id) {
-                    if (confirm('Are you sure you want to unblock this employee?')) {
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.innerHTML = `
-                            <input type="hidden" name="action" value="update_status">
-                            <input type="hidden" name="employee_id" value="${id}">
-                            <input type="hidden" name="status" value="active">
-                        `;
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                }
+        function blockEmployee(id) {
+            if (confirm('Are you sure you want to block this employee? They will not be able to login.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="update_status">
+                    <input type="hidden" name="employee_id" value="${id}">
+                    <input type="hidden" name="status" value="blocked">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
 
-                function resetPassword(id, username) {
-                    document.getElementById('resetEmployeeId').value = id;
-                    document.getElementById('resetUsername').innerText = username;
-                    document.getElementById('resetPasswordModal').classList.add('active');
-                }
+        function unblockEmployee(id) {
+            if (confirm('Are you sure you want to unblock this employee?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="update_status">
+                    <input type="hidden" name="employee_id" value="${id}">
+                    <input type="hidden" name="status" value="active">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
 
-                function generateRandomPassword() {
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                    let password = '';
-                    for (let i = 0; i < 8; i++) {
-                        password += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-                    document.getElementById('newPassword').value = password;
-                }
+        function resetPassword(id, username) {
+            document.getElementById('resetEmployeeId').value = id;
+            document.getElementById('resetUsername').innerText = username;
+            document.getElementById('resetPasswordModal').classList.add('active');
+        }
 
-                function deleteEmployee(id, name) {
-                    if (confirm(`⚠️ WARNING: Are you sure you want to delete ${name}?\n\nThis will remove all their entries and cannot be undone!`)) {
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.innerHTML = `
-                            <input type="hidden" name="action" value="delete_employee">
-                            <input type="hidden" name="employee_id" value="${id}">
-                        `;
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                }
+        function generateRandomPassword() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let password = '';
+            for (let i = 0; i < 8; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('newPassword').value = password;
+        }
 
-                // --- Session & Security Handlers ---
-                
-                // Catch 401 Unauthorized errors from fetch
-                const originalFetch = window.fetch;
-                window.fetch = function() {
-                    return originalFetch.apply(this, arguments).then(response => {
-                        if (response.status === 401) { showSessionExpired(); }
-                        return response;
-                    });
-                };
+        function deleteEmployee(id, name) {
+            if (confirm(`⚠️ WARNING: Are you sure you want to delete ${name}?\n\nThis will remove all their entries and cannot be undone!`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="delete_employee">
+                    <input type="hidden" name="employee_id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
 
-                // Catch 401 Unauthorized errors from jQuery AJAX
-                if (window.jQuery) {
-                    $(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
-                        if (jqXHR.status === 401) { showSessionExpired(); }
-                    });
-                }
+        // --- Session & Security Handlers ---
+        
+        // Catch 401 Unauthorized errors from fetch
+        const originalFetch = window.fetch;
+        window.fetch = function() {
+            return originalFetch.apply(this, arguments).then(response => {
+                if (response.status === 401) { showSessionExpired(); }
+                return response;
+            });
+        };
 
-                function showSessionExpired() {
-                    const modal = document.getElementById('sessionExpiredModal');
-                    if (modal) { modal.classList.add('active'); document.body.style.overflow = 'hidden'; }
-                }
+        // Catch 401 Unauthorized errors from jQuery AJAX
+        if (window.jQuery) {
+            $(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
+                if (jqXHR.status === 401) { showSessionExpired(); }
+            });
+        }
 
-                function triggerRefresh() {
-                    document.getElementById('refreshConfirmModal').classList.add('active');
-                }
+        function showSessionExpired() {
+            const modal = document.getElementById('sessionExpiredModal');
+            if (modal) { 
+                modal.classList.add('active'); 
+                document.body.style.overflow = 'hidden'; 
+            }
+        }
 
-                function executeRefresh() {
-                    window.location.href = 'logout.php';
-                }
+        function triggerRefresh() {
+            document.getElementById('refreshConfirmModal').classList.add('active');
+        }
 
-                // Intercept F5 and Ctrl+R
-                window.addEventListener('keydown', function(e) {
-                    if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
-                        e.preventDefault();
-                        triggerRefresh();
-                    }
-                });
+        function executeRefresh() {
+            window.location.href = 'logout.php';
+        }
 
-                // Refresh Guard
-                window.onbeforeunload = function(e) {
-                    // Standard browsers show their own message
-                    return "Are you sure you want to refresh?";
-                };
+        // Intercept F5 and Ctrl+R
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+                triggerRefresh();
+            }
+        });
 
-                window.addEventListener('click', function(e) {
-                    if (e.target.classList.contains('modal')) {
-                        e.target.classList.remove('active');
-                    }
-                });
-            </script>
-        </body>
-        </html>
+        // Refresh Guard
+        window.onbeforeunload = function(e) {
+            return "Are you sure you want to refresh?";
+        };
+
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

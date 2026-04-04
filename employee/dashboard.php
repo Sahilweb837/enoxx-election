@@ -446,33 +446,79 @@ if (isset($_POST['ajax_action'])) {
             exit;
         }
         
-        // Save Transaction ID
-        if ($_POST['ajax_action'] === 'save_transaction_id') {
-            $candidate_id = (int)$_POST['candidate_id'];
-            $transaction_id = trim($_POST['transaction_id'] ?? '');
+        // AJAX DataTables - Global Candidate List (Optimized for 20,000+)
+        if ($_POST['ajax_action'] === 'get_candidates_json') {
+            $draw = (int)$_POST['draw'];
+            $start = (int)$_POST['start'];
+            $length = (int)$_POST['length'];
+            $search_value = $_POST['search']['value'] ?? '';
             
-            if (!$candidate_id || empty($transaction_id)) {
-                echo json_encode(['success' => false, 'message' => 'Candidate ID and Transaction ID are required.']);
-                exit;
+            $where = "WHERE 1=1";
+            $params = [];
+            
+            if (!empty($search_value)) {
+                $where .= " AND (c.candidate_name_en LIKE ? OR c.candidate_id LIKE ? OR c.mobile_number LIKE ? OR p.panchayat_name LIKE ?)";
+                $st = "%$search_value%";
+                $params = [$st, $st, $st, $st];
             }
             
-            $stmt = $pdo->prepare("UPDATE candidates SET transaction_id = ?, approval_status = 'approved' WHERE id = ?");
-            $stmt->execute([$transaction_id, $candidate_id]);
-            echo json_encode(['success' => true, 'message' => 'Transaction ID saved and candidate verified!']);
-            exit;
-        }
-        
-        // Delete Transaction ID
-        if ($_POST['ajax_action'] === 'delete_transaction_id') {
-            $candidate_id = (int)$_POST['candidate_id'];
-            if (!$candidate_id) {
-                echo json_encode(['success' => false, 'message' => 'Invalid ID']);
-                exit;
+            // Total Count
+            $totalCount = $pdo->query("SELECT COUNT(*) FROM candidates")->fetchColumn();
+            
+            // Filtered Count
+            $filteredStmt = $pdo->prepare("SELECT COUNT(*) FROM candidates c LEFT JOIN panchayats p ON c.panchayat_id = p.id $where");
+            $filteredStmt->execute($params);
+            $filteredCount = $filteredStmt->fetchColumn();
+            
+            // Paginated Data
+            $stmt = $pdo->prepare("
+                SELECT c.*, 
+                       d.district_name, d.district_name_hi,
+                       b.block_name, b.block_name_hi,
+                       p.panchayat_name, p.panchayat_name_hi,
+                       rt.type_name, rt.type_name_hi
+                FROM candidates c
+                LEFT JOIN districts d ON c.district_id = d.id
+                LEFT JOIN representative_types rt ON c.representative_type_id = rt.id
+                LEFT JOIN blocks b ON c.block_id = b.id
+                LEFT JOIN panchayats p ON c.panchayat_id = p.id
+                $where
+                ORDER BY c.created_at DESC
+                LIMIT $length OFFSET $start
+            ");
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll();
+            
+            $data = [];
+            foreach ($rows as $r) {
+                $status = !empty($r['transaction_id']) 
+                    ? '<span class="txn-badge verified"><i class="fas fa-check-circle"></i> Verified</span>' 
+                    : '<span class="txn-badge pending"><i class="fas fa-clock"></i> Pending</span>';
+                
+                $txn_btn = !empty($r['transaction_id'])
+                    ? '<button class="txn-badge verified" onclick="openTransactionModal('.$r['id'].', \''.htmlspecialchars($r['transaction_id']).'\')"><i class="fas fa-check-circle"></i> '.substr($r['transaction_id'], 0, 8).'...</button>'
+                    : '<button class="txn-badge pending" onclick="openTransactionModal('.$r['id'].', \'\')"><i class="fas fa-plus"></i> Add TXN</button>';
+
+                $data[] = [
+                    'id_display' => htmlspecialchars($r['candidate_id'] ?? $r['id']),
+                    'name_en' => htmlspecialchars($r['candidate_name_en'] ?? 'N/A'),
+                    'name_hi' => htmlspecialchars($r['candidate_name_hi'] ?? 'N/A'),
+                    'status' => $status,
+                    'position' => htmlspecialchars($r['type_name_hi'] ?? $r['type_name'] ?? 'N/A'),
+                    'district' => htmlspecialchars($r['district_name_hi'] ?? $r['district_name'] ?? 'N/A'),
+                    'panchayat' => htmlspecialchars($r['panchayat_name_hi'] ?? $r['panchayat_name'] ?? 'N/A'),
+                    'mobile' => htmlspecialchars($r['mobile_number'] ?? 'N/A'),
+                    'txn_btn' => $txn_btn,
+                    'action' => '<button class="action-btn btn-edit" onclick="editCandidate('.$r['id'].')"><i class="fas fa-edit"></i> Edit</button>'
+                ];
             }
             
-            $stmt = $pdo->prepare("UPDATE candidates SET transaction_id = NULL, approval_status = 'pending' WHERE id = ?");
-            $stmt->execute([$candidate_id]);
-            echo json_encode(['success' => true, 'message' => 'Transaction ID removed successfully.']);
+            echo json_encode([
+                "draw" => $draw,
+                "recordsTotal" => (int)$totalCount,
+                "recordsFiltered" => (int)$filteredCount,
+                "data" => $data
+            ]);
             exit;
         }
         
@@ -670,19 +716,7 @@ try {
         ORDER BY c.created_at DESC LIMIT 10
     ")->fetchAll();
     
-    $allCandidates = $pdo->query("
-        SELECT c.*, 
-               d.district_name, d.district_name_hi,
-               b.block_name, b.block_name_hi,
-               p.panchayat_name, p.panchayat_name_hi,
-               rt.type_name, rt.type_name_hi
-        FROM candidates c
-        LEFT JOIN districts d ON c.district_id = d.id
-        LEFT JOIN representative_types rt ON c.representative_type_id = rt.id
-        LEFT JOIN blocks b ON c.block_id = b.id
-        LEFT JOIN panchayats p ON c.panchayat_id = p.id
-        ORDER BY c.created_at DESC
-    ")->fetchAll();
+    $allCandidates = []; // No longer loading all into memory, using DataTables AJAX
     
 } catch (Exception $e) {
     error_log("Database Error: " . $e->getMessage());
@@ -712,6 +746,19 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    
+    <script>
+        // Immediate theme application to prevent flicker
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -728,9 +775,45 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             --warning: #f59e0b;
             --danger: #ef4444;
             --info: #3b82f6;
+            
+            /* Theme overrides */
+            --bg-main: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-theme: #e2e8f0;
+        }
+
+        .dark {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-theme: rgba(255, 255, 255, 0.1);
+            --dark: #334155;
+            --darker: #1e293b;
         }
         
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; display: flex; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(--text-main); display: flex; overflow: hidden; transition: background 0.3s, color 0.3s; }
+        .stat-card, .candidates-table, .modal-content, .session-card, .refresh-modal-content, .sidebar-header, .top-header { background-color: var(--bg-card) !important; color: var(--text-main); border-color: var(--border-theme); }
+        .stat-label, .session-text, .refresh-message-custom { color: var(--text-muted); }
+        .stat-value, .session-title, .refresh-title-custom { color: var(--text-main); }
+        
+        .theme-toggle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--bg-main);
+            border: 1px solid var(--border-theme);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-main);
+            margin-right: 20px;
+            transition: all 0.2s;
+        }
+        .theme-toggle-btn:hover { background: var(--primary); color: white; transform: scale(1.1); }
         
         /* Sidebar Styles */
         .sidebar { width: var(--sidebar-width); background: linear-gradient(180deg, var(--darker) 0%, var(--dark) 100%); color: white; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; transition: all 0.3s; }
@@ -946,11 +1029,82 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         .session-modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
         .session-modal.active { display: flex; animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .session-card { background: white; border-radius: 24px; width: 90%; max-width: 400px; padding: 40px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
-        .session-icon { w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-bounce; margin-bottom: 20px; width: 80px; height: 80px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .session-icon { margin-bottom: 20px; width: 80px; height: 80px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
         .session-title { font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-bottom: 12px; font-family: 'Inter', sans-serif; }
         .session-text { color: #64748b; margin-bottom: 30px; line-height: 1.6; }
         .session-btn { background: #d97706; color: white; border: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: all 0.3s; width: 100%; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
         .session-btn:hover { background: #b45309; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(217,119,6,0.3); }
+
+        /* Refresh Confirmation Modal */
+        #refreshConfirmModal {
+            z-index: 10000;
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.85);
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        #refreshConfirmModal.active {
+            display: flex;
+        }
+        .refresh-modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            padding: 40px 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes modalPopIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .refresh-icon-custom {
+            font-size: 3.5em;
+            color: #f59e0b;
+            margin-bottom: 25px;
+            animation: fa-spin 5s linear infinite;
+        }
+        .refresh-title-custom {
+            font-size: 1.4em;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 15px;
+        }
+        .refresh-message-custom {
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+        .refresh-footer-custom {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .refresh-btn-custom {
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+        .refresh-btn-stay-custom {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .refresh-btn-refresh-custom {
+            background: #f59e0b;
+            color: white;
+        }
+        .refresh-btn-custom:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -976,6 +1130,10 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
     <div class="main-content">
         <div class="top-header">
             <div class="header-search"><i class="fas fa-search"></i><input type="text" placeholder="Search candidates..." id="globalSearch"></div>
+            <div style="flex: 1;"></div>
+            <button onclick="toggleTheme()" class="theme-toggle-btn" title="Toggle Day/Night">
+                <i id="themeIcon" class="fas fa-moon"></i>
+            </button>
             <div class="user-profile">
                 <div class="user-avatar"><?php echo strtoupper(substr($employee['full_name'] ?? 'Admin', 0, 2)); ?></div>
                 <div>
@@ -1255,30 +1413,46 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                             <tr><th>ID</th><th>Name (English)</th><th>Name (Hindi)</th><th>Verification</th><th>Position</th><th>District</th><th>Panchayat</th><th>Mobile</th><th>Txn ID</th><th>Action</th></tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($allCandidates as $c): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($c['candidate_id'] ?? $c['id']); ?></td>
-                                <td><?php echo htmlspecialchars($c['candidate_name_en'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($c['candidate_name_hi'] ?? 'N/A'); ?></td>
-                                <td><?php echo !empty($c['transaction_id']) ? '<span class="txn-badge verified"><i class="fas fa-check-circle"></i> Verified</span>' : '<span class="txn-badge pending"><i class="fas fa-clock"></i> Pending</span>'; ?></td>
-                                <td><?php echo htmlspecialchars($c['type_name_hi'] ?? $c['type_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($c['district_name_hi'] ?? $c['district_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($c['panchayat_name_hi'] ?? $c['panchayat_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($c['mobile_number'] ?? 'N/A'); ?></td>
-                                <td id="txn-cell-<?php echo $c['id']; ?>">
-                                    <?php if (!empty($c['transaction_id'])): ?>
-                                    <button class="txn-badge verified" onclick="openTransactionModal(<?php echo $c['id']; ?>, '<?php echo htmlspecialchars($c['transaction_id']); ?>')"><i class="fas fa-check-circle"></i> <?php echo substr($c['transaction_id'], 0, 8); ?>...</button>
-                                    <?php else: ?>
-                                    <button class="txn-badge pending" onclick="openTransactionModal(<?php echo $c['id']; ?>, '')"><i class="fas fa-plus"></i> Add TXN</button>
-                                    <?php endif; ?>
-                                </td>
-                                <td><button class="action-btn btn-edit" onclick="editCandidate(<?php echo $c['id']; ?>)"><i class="fas fa-edit"></i> Edit</button></td>
-                            </tr>
-                            <?php endforeach; ?>
+                            <!-- Data populated by DataTables AJAX -->
                         </tbody>
                     </table>
                 </div>
             </div>
+            
+            <!-- Scripts to initialize DataTables -->
+            <script>
+            $(document).ready(function() {
+                $('#candidatesDataTable').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: window.location.href,
+                        type: 'POST',
+                        data: {
+                            ajax_action: 'get_candidates_json'
+                        }
+                    },
+                    columns: [
+                        { data: 'id_display' },
+                        { data: 'name_en' },
+                        { data: 'name_hi' },
+                        { data: 'status' },
+                        { data: 'position' },
+                        { data: 'district' },
+                        { data: 'panchayat' },
+                        { data: 'mobile' },
+                        { data: 'txn_btn' },
+                        { data: 'action', orderable: false }
+                    ],
+                    responsive: true,
+                    pageLength: 25,
+                    order: [[0, 'desc']], // Most recent first
+                    language: {
+                        processing: '<div class="stat-icon"><i class="fas fa-spinner fa-spin"></i> Loading...</div>'
+                    }
+                });
+            });
+            </script>
 
             <!-- Verifications Page -->
             <div id="verifications-page" class="page-content">
@@ -1319,25 +1493,19 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
     <div class="modal" id="transactionModal"><div class="modal-content"><div class="modal-header"><h3>Manage Transaction ID</h3><button onclick="closeModal('transaction')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button></div><div class="modal-body"><p>Candidate: <strong id="txnCandidateName"></strong></p><input type="hidden" id="txnCandidateId"><div class="form-group"><label>Transaction ID:</label><input type="text" id="txnId" placeholder="Enter Transaction ID" style="width:100%; padding:12px; border:1px solid #e2e8f0; border-radius:8px;"></div><div id="txnModalMessage"></div></div><div class="modal-footer"><button class="modal-btn modal-btn-secondary" onclick="closeModal('transaction')">Cancel</button><button class="modal-btn modal-btn-primary" onclick="saveTransactionId()">Save</button><button class="modal-btn" style="background:#ef4444; color:white;" onclick="deleteTransactionId()">Delete</button></div></div></div>
 
     <!-- Refresh Confirmation Modal -->
-    <div class="modal" id="refreshConfirmModal">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <div class="modal-header" style="background: #f59e0b;">
-                <h3>Confirm Refresh</h3>
-                <button onclick="closeModal('refreshConfirm')" style="background:none; border:none; color:white; font-size:1.2em;">&times;</button>
+    <div id="refreshConfirmModal">
+        <div class="refresh-modal-content">
+            <div class="refresh-icon-custom">
+                <i class="fas fa-sync-alt"></i>
             </div>
-            <div class="modal-body" style="padding: 30px 20px;">
-                <div style="font-size: 3em; color: #f59e0b; margin-bottom: 20px;">
-                    <i class="fas fa-sync-alt fa-spin"></i>
-                </div>
-                <p style="font-size: 1.1em; color: #1e293b; margin-bottom: 10px;"><strong>Are you sure you want to refresh? / क्या आप वाकई रिफ्रेश करना चाहते हैं?</strong></p>
-                <p style="color: #64748b; font-size: 0.95em; line-height: 1.6;">
-                    Your current session will be closed and any unsaved data will be lost.<br>
-                    आपका वर्तमान सत्र बंद कर दिया जाएगा और कोई भी असुरक्षित डेटा खो जाएगा।
-                </p>
+            <div class="refresh-title-custom">Confirm Page Refresh / पेज रिफ्रेश की पुष्टि करें</div>
+            <div class="refresh-message-custom">
+                Are you sure you want to refresh? Your current session will be closed, and all UN-SAVED data will be lost. You will be logged out automatically.<br><br>
+                क्या आप वाकई रिफ्रेश करना चाहते हैं? आपका वर्तमान सत्र बंद कर दिया जाएगा, और सारा असुरक्षित डेटा खो जाएगा। आप अपने आप लॉग आउट हो जाएंगे।
             </div>
-            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: center;">
-                <button class="modal-btn modal-btn-secondary" onclick="closeModal('refreshConfirm')" style="flex: 1;">Stay on Page</button>
-                <button class="modal-btn" onclick="executeRefresh()" style="flex: 1; background: #f59e0b; color: white;">Yes, Refresh</button>
+            <div class="refresh-footer-custom">
+                <button class="refresh-btn-custom refresh-btn-stay-custom" onclick="closeRefreshModal()">Stay on Page / पेज पर रहें</button>
+                <button class="refresh-btn-custom refresh-btn-refresh-custom" onclick="executeRefresh()">Yes, Logout / हाँ, लॉग आउट करें</button>
             </div>
         </div>
     </div>
@@ -1361,7 +1529,8 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         let currentBlockName = '';
 
         $(document).ready(function() {
-            $('#candidatesDataTable, #verificationsTable').DataTable({
+            // verificationsTable uses standard client-side processing as it has fewer rows
+            $('#verificationsTable').DataTable({
                 responsive: true,
                 pageLength: 25,
                 order: [[0, 'desc']],
@@ -1371,7 +1540,7 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 }
             });
             
-            // Global search functionality
+            // Global search functionality for the server-side candidates table
             $('#globalSearch').on('keyup', function() {
                 $('#candidatesDataTable').DataTable().search(this.value).draw();
             });
@@ -1413,44 +1582,25 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         }
 
         // Refresh Confirmation Logic
-        function triggerRefresh() {
-            document.getElementById('refreshConfirmModal').classList.add('active');
-        }
+        const showRefreshModal = () => document.getElementById('refreshConfirmModal').classList.add('active');
+        const closeRefreshModal = () => document.getElementById('refreshConfirmModal').classList.remove('active');
+        const executeRefresh = () => window.location.href = 'logout.php';
+        const triggerRefresh = showRefreshModal;
 
-        function executeRefresh() {
-            // Close session logic - redirect to logout then login
-            window.location.href = 'logout.php';
-        }
-
-        // Intercept F5 and Ctrl+R
+        // Intercept F5 and Ctrl+R / Cmd+R
         window.addEventListener('keydown', function(e) {
-            if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+            if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
                 e.preventDefault();
-                triggerRefresh();
+                showRefreshModal();
             }
         });
 
-        // Browser Refresh Guard
-        let formChanged = false;
-        const candidateForm = document.getElementById('candidateForm');
-        if (candidateForm) {
-            candidateForm.addEventListener('input', () => { formChanged = true; });
-        }
-        
+        // Browser Refresh Guard (Native prompt)
         window.onbeforeunload = function(e) {
-            if (formChanged) {
-                const msg = "You have unsaved changes. Refreshing will lose these changes and may close your session.";
-                e.returnValue = msg;
-                return msg;
-            }
+            const msg = "Unsaved data will be lost and your session will close.";
+            e.returnValue = msg;
+            return msg;
         };
-
-        // Reset change flag on successful submit
-        if (candidateForm) {
-            candidateForm.addEventListener('submit', function() {
-                window.onbeforeunload = null;
-            });
-        }
 
         // --- Original Methods ---
 
@@ -1998,7 +2148,7 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 }
             } catch (error) {
                 console.error('Error adding block:', error);
-                setButtonLoading(saveBtn, false);
+                setButtonLoading(saveBtn, false);       
                 alert('Error adding block');
             }
         }
@@ -2051,6 +2201,24 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 reader.readAsDataURL(file); 
             }
         });
+    </script>
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            const isDark = html.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const icon = document.getElementById('themeIcon');
+            if (!icon) return;
+            const isDark = document.documentElement.classList.contains('dark');
+            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        window.addEventListener('load', updateThemeIcon);
     </script>
 </body>
 </html>

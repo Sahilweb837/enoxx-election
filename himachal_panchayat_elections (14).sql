@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 27, 2026 at 07:01 PM
+-- Generation Time: Apr 04, 2026 at 09:49 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -91,7 +91,89 @@ INSERT INTO `activity_log` (`id`, `user_id`, `action`, `table_name`, `record_id`
 (21, 1, 'UPDATE', 'candidates', 35, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-14 08:16:33'),
 (22, 1, 'UPDATE', 'candidates', 1, '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-14 08:18:08'),
 (23, 1, 'UPDATE', 'candidates', 2, '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-14 08:18:08'),
-(24, 1, 'UPDATE', 'candidates', 3, '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-14 08:18:08');
+(24, 1, 'UPDATE', 'candidates', 3, '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-14 08:18:08'),
+(25, 1, 'UPDATE', 'candidates', 1, '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(26, 1, 'UPDATE', 'candidates', 2, '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(27, 1, 'UPDATE', 'candidates', 3, '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(28, 1, 'UPDATE', 'candidates', 4, '{\"name_en\": \"Candidate Gharoh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Gharoh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(29, 1, 'UPDATE', 'candidates', 5, '{\"name_en\": \"Candidate Kand\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Kand\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(30, 1, 'UPDATE', 'candidates', 6, '{\"name_en\": \"Candidate Bhagsu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Bhagsu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(31, 1, 'UPDATE', 'candidates', 7, '{\"name_en\": \"Candidate Rajpur\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Rajpur\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(32, 1, 'UPDATE', 'candidates', 11, '{\"name_en\": \"sahil sandhu\", \"status\": \"winner\", \"approval_status\": \"pending\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"winner\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(33, 1, 'UPDATE', 'candidates', 12, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(34, 1, 'UPDATE', 'candidates', 13, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(35, 1, 'UPDATE', 'candidates', 14, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(36, 1, 'UPDATE', 'candidates', 15, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(37, 1, 'UPDATE', 'candidates', 16, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(38, 1, 'UPDATE', 'candidates', 17, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(39, 1, 'UPDATE', 'candidates', 18, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(40, 1, 'UPDATE', 'candidates', 19, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(41, 1, 'UPDATE', 'candidates', 20, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(42, 1, 'UPDATE', 'candidates', 21, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(43, 1, 'UPDATE', 'candidates', 22, '{\"name_en\": \"rest\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"rest\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(44, 1, 'UPDATE', 'candidates', 23, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(45, 1, 'UPDATE', 'candidates', 24, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(46, 1, 'UPDATE', 'candidates', 25, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(47, 1, 'UPDATE', 'candidates', 26, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(48, 1, 'UPDATE', 'candidates', 27, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(49, 1, 'UPDATE', 'candidates', 28, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(50, 1, 'UPDATE', 'candidates', 29, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(51, 1, 'UPDATE', 'candidates', 30, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(52, 1, 'UPDATE', 'candidates', 31, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(53, 1, 'UPDATE', 'candidates', 32, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(54, 1, 'UPDATE', 'candidates', 33, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(55, 1, 'UPDATE', 'candidates', 34, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(56, 1, 'UPDATE', 'candidates', 35, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 08:25:03'),
+(57, 1, 'UPDATE', 'candidates', 35, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 12:28:52'),
+(58, 1, 'UPDATE', 'candidates', 35, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"\"}', NULL, NULL, '2026-03-31 12:28:57'),
+(59, 1, 'UPDATE', 'candidates', 34, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhurs\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 12:33:24'),
+(60, 1, 'UPDATE', 'candidates', 1, '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(61, 1, 'UPDATE', 'candidates', 2, '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(62, 1, 'UPDATE', 'candidates', 3, '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(63, 1, 'UPDATE', 'candidates', 4, '{\"name_en\": \"Candidate Gharoh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Gharoh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(64, 1, 'UPDATE', 'candidates', 5, '{\"name_en\": \"Candidate Kand\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Kand\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(65, 1, 'UPDATE', 'candidates', 6, '{\"name_en\": \"Candidate Bhagsu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Bhagsu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(66, 1, 'UPDATE', 'candidates', 7, '{\"name_en\": \"Candidate Rajpur\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Rajpur\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(67, 1, 'UPDATE', 'candidates', 11, '{\"name_en\": \"sahil sandhu\", \"status\": \"winner\", \"approval_status\": \"pending\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"winner\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(68, 1, 'UPDATE', 'candidates', 34, '{\"name_en\": \"sahil sandhurs\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhurs\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:49:24'),
+(69, 1, 'UPDATE', 'candidates', 1, '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ramesh Kumar\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:17'),
+(70, 1, 'UPDATE', 'candidates', 2, '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Seema Devi\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:17'),
+(71, 1, 'UPDATE', 'candidates', 3, '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Ajay Singh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:17'),
+(72, 1, 'UPDATE', 'candidates', 4, '{\"name_en\": \"Candidate Gharoh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Gharoh\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:17'),
+(73, 1, 'UPDATE', 'candidates', 5, '{\"name_en\": \"Candidate Kand\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Kand\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:17'),
+(74, 1, 'UPDATE', 'candidates', 6, '{\"name_en\": \"Candidate Bhagsu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Bhagsu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:17'),
+(75, 1, 'UPDATE', 'candidates', 7, '{\"name_en\": \"Candidate Rajpur\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"Candidate Rajpur\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:17'),
+(76, 1, 'UPDATE', 'candidates', 11, '{\"name_en\": \"sahil sandhu\", \"status\": \"winner\", \"approval_status\": \"pending\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"winner\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(77, 1, 'UPDATE', 'candidates', 12, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(78, 1, 'UPDATE', 'candidates', 13, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(79, 1, 'UPDATE', 'candidates', 14, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(80, 1, 'UPDATE', 'candidates', 15, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(81, 1, 'UPDATE', 'candidates', 16, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(82, 1, 'UPDATE', 'candidates', 17, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(83, 1, 'UPDATE', 'candidates', 18, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(84, 1, 'UPDATE', 'candidates', 19, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(85, 1, 'UPDATE', 'candidates', 20, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(86, 1, 'UPDATE', 'candidates', 21, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(87, 1, 'UPDATE', 'candidates', 22, '{\"name_en\": \"rest\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"rest\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(88, 1, 'UPDATE', 'candidates', 23, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(89, 1, 'UPDATE', 'candidates', 24, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(90, 1, 'UPDATE', 'candidates', 25, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(91, 1, 'UPDATE', 'candidates', 26, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(92, 1, 'UPDATE', 'candidates', 27, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(93, 1, 'UPDATE', 'candidates', 28, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(94, 1, 'UPDATE', 'candidates', 29, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(95, 1, 'UPDATE', 'candidates', 30, '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"  sukhu sukhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:18'),
+(96, 1, 'UPDATE', 'candidates', 31, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:19'),
+(97, 1, 'UPDATE', 'candidates', 32, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:19'),
+(98, 1, 'UPDATE', 'candidates', 33, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:19'),
+(99, 1, 'UPDATE', 'candidates', 34, '{\"name_en\": \"sahil sandhurs\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhurs\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 14:51:19'),
+(100, 1, 'UPDATE', 'candidates', 35, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"\"}', NULL, NULL, '2026-03-31 14:51:19'),
+(101, 1, 'UPDATE', 'candidates', 21, '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', '{\"name_en\": \"sahil sandhu\", \"status\": \"contesting\", \"approval_status\": \"approved\"}', NULL, NULL, '2026-03-31 22:22:06'),
+(102, 1, 'UPDATE', 'candidates', 41, '{\"name_en\": \"sanjeev kumar\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', '{\"name_en\": \"sanjeev kumar\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-04-01 09:33:21'),
+(103, 1, 'UPDATE', 'candidates', 47, '{\"name_en\": \"aman\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', '{\"name_en\": \"aman\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-04-03 09:49:44'),
+(104, 1, 'UPDATE', 'candidates', 50, '{\"name_en\": \"suresh kumar\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', '{\"name_en\": \"suresh kumar\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-04-03 10:32:07'),
+(105, 1, 'UPDATE', 'candidates', 49, '{\"name_en\": \" abhay\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', '{\"name_en\": \" abhay\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-04-03 10:32:16'),
+(106, 1, 'UPDATE', 'candidates', 48, '{\"name_en\": \"sanjeev kumar\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', '{\"name_en\": \"sanjeev kumar\", \"status\": \"contesting\", \"approval_status\": \"pending\"}', NULL, NULL, '2026-04-03 10:32:20');
 
 -- --------------------------------------------------------
 
@@ -121,27 +203,79 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `action`, `details`, `ip_address`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `admin_user`
+--
+
+CREATE TABLE `admin_user` (
+  `id` int(11) NOT NULL,
+  `employee_id` varchar(50) DEFAULT NULL,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `user_type` varchar(20) DEFAULT 'admin',
+  `role` varchar(50) DEFAULT 'admin',
+  `status` varchar(20) DEFAULT 'active',
+  `last_login` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `admin_user`
+--
+
+INSERT INTO `admin_user` (`id`, `employee_id`, `username`, `password`, `full_name`, `email`, `user_type`, `role`, `status`, `last_login`, `created_at`, `updated_at`) VALUES
+(16, 'ADMIN001', 'ajay_saklani', '$2y$10$xHFHVBahxY26UR1pfO5I6.RSy8QqxGa3FvPg1lpl3kPTRsNSxGTL6', 'Ajay Saklani', 'ajay.saklani@enoxx.id', 'admin', 'admin', 'active', NULL, '2026-04-04 06:11:27', '2026-04-04 06:11:27');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `admin_users`
 --
 
 CREATE TABLE `admin_users` (
   `id` int(11) NOT NULL,
+  `employee_id` varchar(50) DEFAULT NULL,
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `full_name` varchar(100) DEFAULT NULL,
-  `role` enum('super_admin','admin','editor') DEFAULT 'editor',
-  `last_login` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `status` enum('active','inactive') DEFAULT 'active'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `full_name` varchar(100) NOT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `role` varchar(50) DEFAULT 'admin',
+  `status` varchar(20) DEFAULT 'active',
+  `last_login` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `admin_users`
 --
 
-INSERT INTO `admin_users` (`id`, `username`, `password`, `email`, `full_name`, `role`, `last_login`, `created_at`, `status`) VALUES
-(1, 'admin', '$2y$10$oGoZtclCLH.4BqMzI8RUCuxU1/OjKMsR.fCb4xTGC00vEFy7cY5mm', 'admin@enoxxnews.com', 'Administrator', 'super_admin', '2026-03-27 17:26:14', '2026-03-13 05:49:34', 'active');
+INSERT INTO `admin_users` (`id`, `employee_id`, `username`, `password`, `full_name`, `email`, `role`, `status`, `last_login`, `created_at`) VALUES
+(4, NULL, 'ajay_saklani', '$2y$10$YPRe.bvwUxL9.B/2f9dRM.vZ3AVQVunJ0lB5alRKrlMe47PrXCEqy', 'Ajay Saklani', 'ajay.saklani@enoxx.id', 'admin', 'active', NULL, '2026-04-04 07:31:45');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `bdc_constituencies`
+--
+
+CREATE TABLE `bdc_constituencies` (
+  `id` int(11) NOT NULL,
+  `block_id` int(11) NOT NULL,
+  `constituency_name` varchar(100) NOT NULL,
+  `constituency_name_hi` varchar(100) DEFAULT NULL,
+  `slug` varchar(100) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `bdc_constituencies`
+--
+
+INSERT INTO `bdc_constituencies` (`id`, `block_id`, `constituency_name`, `constituency_name_hi`, `slug`, `created_at`) VALUES
+(1, 1, 'Dharamshala Rural', 'धर्मशाला ग्रामीण', 'dharamshala-rural', '2026-03-30 09:33:29'),
+(2, 1, 'Kangra Valley', 'कांगड़ा घाटी', 'kangra-valley', '2026-03-30 09:33:29');
 
 -- --------------------------------------------------------
 
@@ -192,7 +326,9 @@ INSERT INTO `blocks` (`id`, `district_id`, `jila_parishad_id`, `block_name`, `bl
 (21, 8, 8, 'test', 'परीक्षा', NULL, 'test-3', NULL, NULL, NULL, '2026-03-13 09:22:45', '2026-03-13 11:54:43'),
 (22, 15, 15, 'test', 'परीक्षा', NULL, 'test-4', NULL, NULL, NULL, '2026-03-13 11:13:57', '2026-03-13 11:54:43'),
 (23, 3, 32, 'dsdsd', 'डी.एस.डी.एस.डी', NULL, 'dsdsd', NULL, NULL, NULL, '2026-03-13 11:55:13', '2026-03-13 11:55:13'),
-(25, 12, 33, 'test', 'परीक्षा', NULL, 'test-5', NULL, NULL, NULL, '2026-03-14 05:56:12', '2026-03-14 05:56:12');
+(25, 12, 33, 'test', 'परीक्षा', NULL, 'test-5', NULL, NULL, NULL, '2026-03-14 05:56:12', '2026-03-14 05:56:12'),
+(35, 6, 6, 'jt', 'संयुक्त', NULL, 'jt', NULL, NULL, NULL, '2026-04-01 10:38:36', '2026-04-01 10:38:36'),
+(38, 6, 6, 'batia no1', 'बटिया नंबर 1', NULL, 'batia-no1', NULL, NULL, NULL, '2026-04-02 07:43:53', '2026-04-02 07:43:53');
 
 -- --------------------------------------------------------
 
@@ -202,21 +338,30 @@ INSERT INTO `blocks` (`id`, `district_id`, `jila_parishad_id`, `block_name`, `bl
 
 CREATE TABLE `candidates` (
   `id` int(11) NOT NULL,
+  `candidate_unique_id` varchar(50) DEFAULT NULL,
   `candidate_id` varchar(50) NOT NULL,
   `district_id` int(11) NOT NULL,
+  `representative_type_id` int(11) DEFAULT NULL,
   `jila_parishad_pradhan` enum('jila_parishad','pradhan') DEFAULT NULL,
   `jila_parishad_id` int(11) DEFAULT NULL,
-  `block_id` int(11) NOT NULL,
-  `panchayat_id` int(11) NOT NULL,
+  `block_id` int(11) DEFAULT NULL,
+  `panchayat_id` int(11) DEFAULT NULL,
+  `bdc_constituency_id` int(11) DEFAULT NULL,
+  `zila_parishad_constituency_id` int(11) DEFAULT NULL,
   `village` varchar(100) NOT NULL,
+  `village_hi` varchar(100) DEFAULT NULL,
   `candidate_name_hi` varchar(100) NOT NULL,
   `candidate_name_en` varchar(100) NOT NULL,
   `relation_type` enum('father','husband') NOT NULL,
   `relation_name` varchar(100) NOT NULL,
+  `relation_name_hi` varchar(100) DEFAULT NULL,
   `gender` enum('Male','Female','Other') NOT NULL,
   `age` int(11) NOT NULL,
   `education` varchar(200) DEFAULT NULL,
+  `education_hi` varchar(100) DEFAULT NULL,
   `profession` varchar(100) DEFAULT NULL,
+  `profession_hi` varchar(100) DEFAULT NULL,
+  `short_notes_en` text DEFAULT NULL,
   `short_notes_hi` text DEFAULT NULL,
   `bio_hi` text DEFAULT NULL,
   `bio_en` text DEFAULT NULL,
@@ -240,46 +385,21 @@ CREATE TABLE `candidates` (
   `whatsapp_verified` tinyint(1) DEFAULT 0,
   `photo_hidden` tinyint(1) DEFAULT 1,
   `verification_code` varchar(6) DEFAULT NULL,
-  `verification_expiry` datetime DEFAULT NULL
+  `verification_expiry` datetime DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `transaction_id` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `candidates`
 --
 
-INSERT INTO `candidates` (`id`, `candidate_id`, `district_id`, `jila_parishad_pradhan`, `jila_parishad_id`, `block_id`, `panchayat_id`, `village`, `candidate_name_hi`, `candidate_name_en`, `relation_type`, `relation_name`, `gender`, `age`, `education`, `profession`, `short_notes_hi`, `bio_hi`, `bio_en`, `slug`, `photo_url`, `video_message_url`, `interview_video_url`, `mobile_number`, `whatsapp_number`, `email`, `facebook_url`, `twitter_url`, `instagram_url`, `status`, `approval_status`, `views`, `featured`, `created_at`, `updated_at`, `created_by`, `whatsapp_verified`, `photo_hidden`, `verification_code`, `verification_expiry`) VALUES
-(1, 'HPEL20260001', 1, NULL, NULL, 1, 1, 'Rakkar', 'रमेश कुमार', 'Ramesh Kumar', 'father', 'Mohan Lal', 'Male', 42, 'Graduate', 'Farmer', 'स्थानीय किसान, 10 वर्षों से सामाजिक कार्य में सक्रिय', 'रमेश कुमार रक्कड़ पंचायत के स्थानीय किसान हैं और पिछले 10 वर्षों से सामाजिक कार्यों में सक्रिय रूप से भाग ले रहे हैं। उन्होंने ग्रामीण विकास और किसानों के कल्याण के लिए कई परियोजनाओं का नेतृत्व किया है।', 'Ramesh Kumar is a local farmer from Rakkar Panchayat and has been actively participating in social work for the past 10 years. He has led several projects for rural development and farmer welfare.', 'kangra/dharamshala/rakkar/ramesh-kumar', '300', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 05:49:34', '2026-03-14 08:18:08', NULL, 0, 1, NULL, NULL),
-(2, 'HPEL20260002', 1, NULL, NULL, 1, 2, 'Khaniyara', 'सीमा देवी', 'Seema Devi', 'husband', 'Rajesh Kumar', 'Female', 38, 'Post Graduate', 'Teacher', 'महिला सशक्तिकरण, शिक्षा के क्षेत्र में कार्यरत', 'सीमा देवी खनियारा पंचायत में सरकारी स्कूल की शिक्षिका हैं। उन्होंने महिला सशक्तिकरण और बालिका शिक्षा के लिए कई अभियान चलाए हैं। वह पिछले 5 वर्षों से महिला मंडल की अध्यक्ष हैं।', 'Seema Devi is a government school teacher in Khaniyara Panchayat. She has led several campaigns for women empowerment and girl child education. She has been president of Mahila Mandal for the past 5 years.', 'kangra/dharamshala/khaniyara/seema-devi', '300', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 05:49:34', '2026-03-14 08:18:08', NULL, 0, 1, NULL, NULL),
-(3, 'HPEL20260003', 1, NULL, NULL, 2, 3, 'Sidhpur', 'अजय सिंह', 'Ajay Singh', 'father', 'Suresh Singh', 'Male', 55, '10th', 'Business', 'व्यवसायी, युवाओं के लिए रोजगार के अवसर', 'अजय सिंह सिद्धपुर के एक प्रतिष्ठित व्यवसायी हैं। उन्होंने क्षेत्र में कई छोटे उद्योग स्थापित किए हैं और युवाओं को रोजगार के अवसर प्रदान किए हैं। वह पिछले 15 वर्षों से व्यापार मंडल के अध्यक्ष हैं।', 'Ajay Singh is a reputed businessman from Sidhpur. He has established several small industries in the region and provided employment opportunities to youth. He has been president of the Trade Council for the past 15 years.', 'kangra/palampur/sidhpur/ajay-singh', '300', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 05:49:34', '2026-03-14 08:18:08', NULL, 0, 1, NULL, NULL),
-(4, 'HPEL20260004', 1, NULL, NULL, 1, 4, 'Gharoh', 'उम्मीदवार घरोह', 'Candidate Gharoh', 'husband', 'Parent Gharoh', 'Male', 29, 'Post Graduate', 'Teacher', 'स्थानीय विकास के लिए कार्यरत', 'स्थानीय विकास और सामाजिक कार्यों में सक्रिय', 'Active in local development and social work', 'kangra/dharamshala/gharoh/candidate-gharoh', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 05:49:36', '2026-03-13 05:49:36', NULL, 0, 1, NULL, NULL),
-(5, 'HPEL20260005', 1, NULL, NULL, 1, 6, 'Kand', 'उम्मीदवार कंड', 'Candidate Kand', 'father', 'Parent Kand', 'Male', 50, '10th', 'Farmer', 'स्थानीय विकास के लिए कार्यरत', 'स्थानीय विकास और सामाजिक कार्यों में सक्रिय', 'Active in local development and social work', 'kangra/dharamshala/kand/candidate-kand', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 05:49:36', '2026-03-13 05:49:36', NULL, 0, 1, NULL, NULL),
-(6, 'HPEL20260006', 1, NULL, NULL, 1, 11, 'Bhagsu', 'उम्मीदवार भागसू', 'Candidate Bhagsu', 'father', 'Parent Bhagsu', 'Female', 52, 'Post Graduate', 'Farmer', 'स्थानीय विकास के लिए कार्यरत', 'स्थानीय विकास और सामाजिक कार्यों में सक्रिय', 'Active in local development and social work', 'kangra/dharamshala/bhagsu/candidate-bhagsu', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 05:49:36', '2026-03-13 05:49:36', NULL, 0, 1, NULL, NULL),
-(7, 'HPEL20260007', 1, NULL, NULL, 1, 15, 'Rajpur', 'उम्मीदवार राजपुर', 'Candidate Rajpur', 'husband', 'Parent Rajpur', 'Male', 47, '12th', 'Teacher', 'स्थानीय विकास के लिए कार्यरत', 'स्थानीय विकास और सामाजिक कार्यों में सक्रिय', 'Active in local development and social work', 'kangra/dharamshala/rajpur/candidate-rajpur', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 05:49:36', '2026-03-13 05:49:36', NULL, 0, 1, NULL, NULL),
-(11, 'HPEL20261872', 1, NULL, NULL, 1, 16, 'kangra', 'sahil sandhu', 'sahil sandhu', 'husband', 'test', 'Male', 22, '', 'test', 'terter', '', '', 'kangra/dharamshala/re/sahil-sandhu', '', NULL, NULL, '0780769737', NULL, NULL, NULL, NULL, NULL, 'winner', 'pending', 0, 0, '2026-03-13 05:49:39', '2026-03-13 05:49:39', NULL, 0, 1, NULL, NULL),
-(12, 'HPEL20260521', 6, NULL, NULL, 16, 26, 'kangra', 'test', 'sahil sandhu', 'husband', 'tet', 'Male', 100, 'test', 'fdrf', 'test', 'test ग्राम पंचायत kangra के निवासी हैं। वह एक fdrf हैं। test उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of kangra Panchayat. He/She is a fdrf. test Their main objective is rural development and overall progress of the panchayat.', 'hamirpur-test-test-sahil-sandhu', '69b3be99e41a1_20260313.png', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 07:36:57', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(13, 'HPEL20264446', 14, NULL, NULL, 17, 27, 'test', 'test', 'sahil sandhu', 'husband', 'test', 'Male', 100, 'test', 'test', 'rererer', 'test ग्राम पंचायत test के निवासी हैं। वह एक test हैं। rererer उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a test. rererer Their main objective is rural development and overall progress of the panchayat.', 'palampur-dhamrshala-rakkar-1-sahil-sandhu', '69b3bf05d33b4_20260313.jfif', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 07:38:45', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(14, 'HPEL20269080', 7, NULL, NULL, 20, 29, 'kangra', 'sahil sandhu', 'sahil sandhu', 'husband', 'rere', 'Male', 21, 'test', 'test', 'trt', 'sahil sandhu ग्राम पंचायत kangra के निवासी हैं। वह एक test हैं। trt उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of kangra Panchayat. He/She is a test. trt Their main objective is rural development and overall progress of the panchayat.', 'bilaspur-test-2-test-1-sahil-sandhu', '69b3c8f917a34_20260313.png', NULL, NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 08:21:13', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(15, 'HPEL20260465', 7, NULL, NULL, 20, 29, 'kangra', 'sahil sandhu', 'sahil sandhu', 'husband', 'test', 'Male', 21, 'test', 'test', 'sdsdsd', 'sahil sandhu ग्राम पंचायत kangra के निवासी हैं। वह एक test हैं। sdsdsd उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of kangra Panchayat. He/She is a test. sdsdsd Their main objective is rural development and overall progress of the panchayat.', 'bilaspur-test-2-test-1-sahil-sandhu-1', '69b3cb9a26b91_20260313.jpg', NULL, NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 08:32:26', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(16, 'HPEL20260162', 1, NULL, NULL, 1, 10, 'test', 'test', 'sahil sandhu', 'husband', 'rere', 'Male', 100, 'test', 'fdrf', 'rere', 'test ग्राम पंचायत test के निवासी हैं। वह एक fdrf हैं। rere उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a fdrf. rere Their main objective is rural development and overall progress of the panchayat.', 'kangra-dharamshala-dharamkot-sahil-sandhu', '69b3d637bc3fd_20260313.png', 'https://www.youtube.com/watch?v=NmHUtF3rceo', NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 09:17:43', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(17, 'HPEL20269042', 8, NULL, NULL, 21, 30, 'test', 'test', 'sahil sandhu', 'husband', 'test', 'Male', 21, 'resr', 'resr', 'test', 'test ग्राम पंचायत test के निवासी हैं। वह एक resr हैं। test उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a resr. test Their main objective is rural development and overall progress of the panchayat.', 'chamba-test-3-apni-sahil-sandhu', '69b3d86ceffa0_20260313.png', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 09:27:08', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(18, 'HPEL20261456', 8, NULL, NULL, 21, 30, 'test', 'sahil sandhu', 'sahil sandhu', 'husband', 'rere', 'Female', 21, 'resr', 'test', 'rererer', 'sahil sandhu ग्राम पंचायत test के निवासी हैं। वह एक test हैं। rererer उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a test. rererer Their main objective is rural development and overall progress of the panchayat.', 'chamba-test-3-apni-sahil-sandhu-1', '69b3d88f2a846_20260313.png', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 09:27:43', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(19, 'HPEL20262397', 8, NULL, NULL, 21, 30, 'test', 'test', 'sahil sandhu', 'husband', 'test', 'Male', 21, '343343', NULL, 'rererer', 'test ग्राम पंचायत test के निवासी हैं। वह एक  हैं। rererer उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a . rererer Their main objective is rural development and overall progress of the panchayat.', 'chamba-test-3-apni-sahil-sandhu-2', '69b3d8af34054_20260313.png', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 09:28:15', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(20, 'HPEL20260239', 8, NULL, NULL, 21, 30, 'test', 'test', 'sahil sandhu', 'father', 'test', 'Male', 21, 'resr', 'test', 'ewewewewe', 'test ग्राम पंचायत test के निवासी हैं। वह एक test हैं। ewewewewe उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a test. ewewewewe Their main objective is rural development and overall progress of the panchayat.', 'chamba-test-3-apni-sahil-sandhu-3', '69b3d8e0a3635_20260313.png', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 09:29:04', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(21, 'HPEL20269408', 8, NULL, NULL, 21, 30, 'test', 'test', 'sahil sandhu', 'husband', 'test', 'Male', 21, 'resr', 'fdrf', 'ewwewew', 'test ग्राम पंचायत test के निवासी हैं। वह एक fdrf हैं। ewwewew उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a fdrf. ewwewew Their main objective is rural development and overall progress of the panchayat.', 'chamba-test-3-apni-sahil-sandhu-4', '69b3d90ae5f49_20260313.png', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 09:29:46', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(22, 'HPEL20266661', 6, NULL, NULL, 16, 26, 'test', 'test', 'rest', 'husband', 'ewe', 'Female', 21, 'resr', 'test', 'wewewe', 'test, test गांव के निवासी, ewe के पत्नी हैं। पेशे से test हैं और resr शिक्षित हैं। पंचायत चुनाव 2026 में भाग ले रहे हैं और क्षेत्र के विकास के लिए प्रतिबद्ध हैं।', 'rest, resident of test village, is the wife of ewe. By profession, test and educated up to resr. Contesting in Panchayat Election 2026 and committed to the development of the area.', 'hamirpur-test-test-rest', '69b3e0f33c8f9_20260313.jfif', 'https://www.youtube.com/watch?v=NmHUtF3rceo', 'https://www.youtube.com/watch?v=NmHUtF3rceo', '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 10:03:31', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(23, 'HPEL20269261', 15, NULL, NULL, 22, 31, 'test', ' sukhu sukhu', '  sukhu sukhu', 'father', 'rere', 'Male', 21, '  sukhu sukhua', '  sukhu sukhua', ' sukhu sukhua', ' sukhu sukhu ग्राम पंचायत test के निवासी हैं। वह एक   sukhu sukhua हैं।  sukhu sukhua उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', '  sukhu sukhu is a resident of test Panchayat. He/She is a   sukhu sukhua.  sukhu sukhua Their main objective is rural development and overall progress of the panchayat.', 'delhi-test-4-rerere-sukhu-sukhu', '69b3f1e769145_20260313.jpg', NULL, NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 11:15:51', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(24, 'HPEL20268930', 6, NULL, NULL, 16, 26, 'weewe', ' sukhu sukhu', '  sukhu sukhu', 'husband', 'test', 'Female', 21, '343343', 'test', 'sdsdsds', ' sukhu sukhu ग्राम पंचायत weewe के निवासी हैं। वह एक test हैं। sdsdsds उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', '  sukhu sukhu is a resident of weewe Panchayat. He/She is a test. sdsdsds Their main objective is rural development and overall progress of the panchayat.', 'hamirpur-test-test-sukhu-sukhu', '69b3f22eca05c_20260313.jpg', NULL, NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 11:17:02', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(25, 'HPEL20265419', 6, NULL, NULL, 16, 26, 'dsdsdd', ' sukhu sukhu', '  sukhu sukhu', 'husband', 'dsdsd', 'Female', 21, '343343', 'ddsd', 'dsdsdsdddddddddddddd', ' sukhu sukhu ग्राम पंचायत dsdsdd के निवासी हैं। वह एक ddsd हैं। dsdsdsdddddddddddddd उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', '  sukhu sukhu is a resident of dsdsdd Panchayat. He/She is a ddsd. dsdsdsdddddddddddddd Their main objective is rural development and overall progress of the panchayat.', 'hamirpur-test-test-sukhu-sukhu-1', '69b3f25561500_20260313.jpg', NULL, NULL, '3434343434', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 11:17:41', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(26, 'HPEL20260291', 6, NULL, NULL, 16, 26, '4343', ' sukhu sukhu', '  sukhu sukhu', 'husband', 'test', 'Male', 100, 'resr', 'test', 'sdsdsds', ' sukhu sukhu ग्राम पंचायत 4343 के निवासी हैं। वह एक test हैं। sdsdsds उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', '  sukhu sukhu is a resident of 4343 Panchayat. He/She is a test. sdsdsds Their main objective is rural development and overall progress of the panchayat.', 'hamirpur-test-test-sukhu-sukhu-2', '69b3f279f154c_20260313.jpg', NULL, NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 11:18:17', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(27, 'HPEL20262449', 6, NULL, NULL, 16, 26, 'kangra', ' sukhu sukhu', '  sukhu sukhu', 'husband', 'tet', 'Male', 21, '343343', 'fdrf', 'sdsdsdsd', ' sukhu sukhu ग्राम पंचायत kangra के निवासी हैं। वह एक fdrf हैं। sdsdsdsd उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', '  sukhu sukhu is a resident of kangra Panchayat. He/She is a fdrf. sdsdsdsd Their main objective is rural development and overall progress of the panchayat.', 'hamirpur-test-test-sukhu-sukhu-3', '69b3f298a1549_20260313.jpg', NULL, NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 11:18:48', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(28, 'HPEL20262145', 6, NULL, NULL, 16, 26, 'kangra', ' sukhu sukhu', '  sukhu sukhu', 'husband', 'tet', 'Male', 100, '343343', 'fdrf', '3434343', ' sukhu sukhu ग्राम पंचायत kangra के निवासी हैं। वह एक fdrf हैं। 3434343 उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', '  sukhu sukhu is a resident of kangra Panchayat. He/She is a fdrf. 3434343 Their main objective is rural development and overall progress of the panchayat.', 'hamirpur-test-test-sukhu-sukhu-4', '69b3f2bab18ae_20260313.jpg', NULL, NULL, '0780769737', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 11:19:22', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(29, 'HPEL20261975', 14, NULL, NULL, 17, 27, '434343', 'साहिल संधू', 'sahil sandhu', 'husband', 'rere', 'Male', 21, '343343', 'test', ' साहिल संधू ग्राम पंचायत 434343 के निवासी हैं। वह एक test हैं और 343343 शिक्षित हैं। wewe उनका मुख्य उद्देश्य ग्रामीण विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। वह पंचायत के समग्र विकास के लिए प्रतिबद्ध हैं।\r\n', 'साहिल संधू ग्राम पंचायत 434343 के निवासी हैं। वह एक test हैं और 343343 शिक्षित हैं।  साहिल संधू ग्राम पंचायत 434343 के निवासी हैं। वह एक test हैं और 343343 शिक्षित हैं। wewe उनका मुख्य उद्देश्य ग्रामीण विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। वह पंचायत के समग्र विकास के लिए प्रतिबद्ध हैं।\r\n उनका मुख्य उद्देश्य ग्रामीण विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। वह पंचायत के समग्र विकास के लिए प्रतिबद्ध हैं।', 'Translation temporarily unavailable. Please check back later.', 'palampur-dhamrshala-rakkar-1-sahil-sandhu-1', '69b3f4bd919b3_20260313.jpg', NULL, NULL, '7845126930', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-13 11:27:58', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(30, 'HPEL20264394', 12, NULL, 33, 25, 33, 'kangra', 'सुक्खु सुक्खु', '  sukhu sukhu', 'husband', 'tet', 'Male', 21, 'resr', 'test', ' सुक्खु सुक्खु ग्राम पंचायत kangra के निवासी हैं। वह एक test हैं और resr शिक्षित हैं। test उनका मुख्य उद्देश्य ग्रामीण विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। वह पंचायत के समग्र विकास के लिए प्रतिबद्ध हैं।\r\n\r\n', 'सुक्खु सुक्खु ग्राम पंचायत kangra के निवासी हैं। वह एक test हैं और resr शिक्षित हैं।  सुक्खु सुक्खु ग्राम पंचायत kangra के निवासी हैं। वह एक test हैं और resr शिक्षित हैं। test उनका मुख्य उद्देश्य ग्रामीण विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। वह पंचायत के समग्र विकास के लिए प्रतिबद्ध हैं।\r\n\r\n उनका मुख्य उद्देश्य ग्रामीण विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। वह पंचायत के समग्र विकास के लिए प्रतिबद्ध हैं।', 'Translation temporarily unavailable. Please check back later.', 'sirmaur-res-test-test-5-test-2-sukhu-sukhu', '69b4f8aa276ec_20260314.jpg', NULL, NULL, '3434343434', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-14 05:57:00', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(31, 'HPEL20267653', 3, 'jila_parishad', NULL, 23, 34, 'test', 'साहिल संधू', 'sahil sandhu', 'father', 'test', 'Male', 21, 'resr', 'indiividual', ' साहिल संधू, test गांव के निवासी, test के पुत्र हैं। पेशे से indiividual हैं और resr शिक्षित हैं। पंचायत चुनाव 2026 में भाग ले रहे हैं और क्षेत्र के विकास के लिए प्रतिबद्ध हैं।\r\n\r\n', 'साहिल संधू ग्राम पंचायत test के निवासी हैं। वह एक indiividual हैं।  साहिल संधू, test गांव के निवासी, test के पुत्र हैं। पेशे से indiividual हैं और resr शिक्षित हैं। पंचायत चुनाव 2026 में भाग ले रहे हैं और क्षेत्र के विकास के लिए प्रतिबद्ध हैं।\r\n\r\n उनका मुख्य उद्देश्य ग्रामीण विकास और पंचायत का समग्र विकास करना है।', 'sahil sandhu is a resident of test Panchayat. He/She is a indiividual.  साहिल संधू, test गांव के निवासी, test के पुत्र हैं। पेशे से indiividual हैं और resr शिक्षित हैं। पंचायत चुनाव 2026 में भाग ले रहे हैं और क्षेत्र के विकास के लिए प्रतिबद्ध हैं।\r\n\r\n Their main objective is rural development and overall progress of the panchayat.', 'shimla-dsdsd-test-3-sahil-sandhu', '69b501e7bcabe_20260314.jpg', NULL, NULL, '7807697370', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-14 06:36:23', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL),
-(32, 'HPEL20261160', 6, 'pradhan', NULL, 16, 26, 'test', 'साहिल संधू', 'sahil sandhu', 'husband', 'dsdsd', 'Male', 21, 'resr', 'indiividual', 'HY MY NAME I SAHIL SANDHU', 'साहिल संधू, test गांव के निवासी, dsdsd के पत्नी हैं। पेशे से indiividual हैं और resr शिक्षित हैं। HY MY NAME I SAHIL SANDHU ग्राम पंचायत चुनाव 2026 में भाग ले रहे हैं। इनका मुख्य उद्देश्य गांव का विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। युवाओं के लिए रोजगार के अवसर पैदा करना और महिलाओं को सशक्त बनाना इनके प्रमुख एजेंडे में शामिल हैं।', '', 'hamirpur-test-test-sahil-sandhu-1', NULL, NULL, NULL, '7807697370', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-14 06:57:56', '2026-03-14 06:57:56', NULL, 0, 1, NULL, NULL),
-(33, 'HPEL20260424', 14, 'pradhan', NULL, 17, 27, 'kangra', 'साहिल संधू', 'sahil sandhu', 'husband', 'test', 'Male', 21, 'resr', 'indiividual', 'TEST', 'साहिल संधू, kangra गांव के निवासी, test के पत्नी हैं। पेशे से indiividual हैं और resr शिक्षित हैं। TEST ग्राम पंचायत चुनाव 2026 में भाग ले रहे हैं। इनका मुख्य उद्देश्य गांव का विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। युवाओं के लिए रोजगार के अवसर पैदा करना और महिलाओं को सशक्त बनाना इनके प्रमुख एजेंडे में शामिल हैं।', '', 'palampur-dhamrshala-rakkar-1-sahil-sandhu-2', NULL, NULL, NULL, '7807697370', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-14 06:58:55', '2026-03-14 06:58:55', NULL, 0, 1, NULL, NULL),
-(34, 'HPEL20263194', 15, 'pradhan', NULL, 18, 28, 'RESR', 'साहिल संधू', 'sahil sandhu', 'father', 'RESR', 'Male', 21, '343343', 'indiividual', 'RESR', ' साहिल संधू, RESR गांव के निवासी, RESR के पुत्र हैं। पेशे से indiividual हैं और 343343 शिक्षित हैं। RESR ग्राम पंचायत चुनाव 2026 में भाग ले रहे हैं। इनका मुख्य उद्देश्य गांव का विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। युवाओं के लिए रोजगार के अवसर पैदा करना और महिलाओं को सशक्त बनाना इनके प्रमुख एजेंडे में शामिल हैं।\r\n\r\n', '', 'delhi-pathankot-adhwani-sahil-sandhu', NULL, NULL, NULL, '7807697370', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-14 07:00:28', '2026-03-14 07:00:28', NULL, 0, 1, NULL, NULL),
-(35, 'HPEL20265548', 8, 'jila_parishad', NULL, 21, 30, 'kangra', 'साहिल संधू', 'sahil sandhu', 'husband', 'rere', 'Male', 21, '  sukhu sukhua', 'indiividual', 'my name is sahil sandhu', 'साहिल संधू, kangra गांव के निवासी, rere के पत्नी हैं। पेशे से indiividual हैं और   sukhu sukhua शिक्षित हैं। my name is sahil sandhu ग्राम पंचायत चुनाव 2026 में भाग ले रहे हैं। इनका मुख्य उद्देश्य गांव का विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है। युवाओं के लिए रोजगार के अवसर पैदा करना और महिलाओं को सशक्त बनाना इनके प्रमुख एजेंडे में शामिल हैं।', 'sahil sandhu, resident of kangra village, is the wife of rere. By profession, a indiividual and is   sukhu sukhua educated. my name is sahil sandhu Contesting in the Gram Panchayat Election 2026. Their main objectives include village development, expansion of education and health facilities, creating employment opportunities for youth, and empowering women.', 'chamba-test-3-apni-sahil-sandhu-5', '69b5126e6645f_20260314.jpg', NULL, NULL, '7807697370', NULL, NULL, NULL, NULL, NULL, 'contesting', 'approved', 0, 0, '2026-03-14 07:46:54', '2026-03-14 08:16:33', NULL, 0, 1, NULL, NULL);
+INSERT INTO `candidates` (`id`, `candidate_unique_id`, `candidate_id`, `district_id`, `representative_type_id`, `jila_parishad_pradhan`, `jila_parishad_id`, `block_id`, `panchayat_id`, `bdc_constituency_id`, `zila_parishad_constituency_id`, `village`, `village_hi`, `candidate_name_hi`, `candidate_name_en`, `relation_type`, `relation_name`, `relation_name_hi`, `gender`, `age`, `education`, `education_hi`, `profession`, `profession_hi`, `short_notes_en`, `short_notes_hi`, `bio_hi`, `bio_en`, `slug`, `photo_url`, `video_message_url`, `interview_video_url`, `mobile_number`, `whatsapp_number`, `email`, `facebook_url`, `twitter_url`, `instagram_url`, `status`, `approval_status`, `views`, `featured`, `created_at`, `updated_at`, `created_by`, `whatsapp_verified`, `photo_hidden`, `verification_code`, `verification_expiry`, `is_active`, `transaction_id`) VALUES
+(46, NULL, 'HPEL20264374', 6, 1, NULL, NULL, 35, 35, NULL, NULL, 'test', 'परीक्षा', 'संजीव कुमार', 'sanjeev kumar', 'father', 'ewe', 'एवै', 'Male', 54, 'rerererer', 'reererer', 'Netcoder Technology', 'नेटकोडर प्रौद्योगिकी', NULL, '', 'मैं संजीव कुमार, 54 साल का हूँ। ', 'I am sanjeev kumar, 54 years old. I have completed my rerererer. I work as a Netcoder Technology. I belong to test village. I am committed to serving my community and working for the development of our area.', 'sanjeev-kumar', 'uploads/candidates/1775039975_IMG_8932.JPG', '', '', '8350941126', NULL, NULL, NULL, NULL, NULL, 'contesting', 'pending', 0, 0, '2026-04-01 10:39:39', '2026-04-01 10:39:39', 6, 0, 1, NULL, NULL, 1, '232323232323'),
+(47, NULL, 'HPEL20266889', 7, 1, NULL, NULL, 20, 29, NULL, NULL, 'rrer', 'rrer', 'Decoder Solutions', 'aman', 'father', 'wewewe', 'वेवेवे', 'Male', 44, 'rerererer', 'reererer', 'Netcoder Technology', 'नेटकोडर प्रौद्योगिकी', '', '', 'aman, rrer गांव के निवासी, wewewe के पुत्र हैं। पेशे से Netcoder Technology हैं और rerererer शिक्षित हैं। पंचायत चुनाव 2026 में भाग ले रहे हैं। इनका मुख्य उद्देश्य गांव का विकास, शिक्षा और स्वास्थ्य सुविधाओं का विस्तार करना है।', 'aman, resident of rrer village, is the son of wewewe. By profession, a Netcoder Technology and is rerererer educated. Contesting in the Panchayat Election 2026. Their main objectives include village development, education, and health facilities.', 'aman', 'uploads/candidates/1775041170_IMG_0030.jpg', '', '', '9816132055', NULL, NULL, NULL, NULL, NULL, 'contesting', 'pending', 0, 0, '2026-04-01 10:59:33', '2026-04-03 09:49:44', 6, 0, 1, NULL, NULL, 1, '123123123'),
+(48, NULL, 'HPEL20262058', 3, 1, NULL, NULL, 23, 34, NULL, NULL, 'rrer', 'rrer', 'संजीव कुमार', 'sanjeev kumar', 'father', 'ewe', 'एवै', 'Male', 43, 'rerererer', 'reererer', 'Netcoder Technology', 'नेटकोडर प्रौद्योगिकी', NULL, '', 'मैं संजीव कुमार, 43 साल का हूं। ', 'I am sanjeev kumar, 43 years old. I have completed my rerererer. I work as a Netcoder Technology. I belong to rrer village. I am committed to serving my community and working for the development of our area.', 'sanjeev-kumar-1', 'uploads/candidates/1775042646_IMG_0030.jpg', '', '', '8350941126', NULL, NULL, NULL, NULL, NULL, 'contesting', 'pending', 0, 0, '2026-04-01 11:24:10', '2026-04-03 10:32:20', 6, 1, 1, NULL, NULL, 1, 'ADMIN-1775212340-772'),
+(49, NULL, 'HPEL20266216', 6, 3, NULL, NULL, 38, NULL, NULL, NULL, 'jaterh', 'jaterh', 'अभय', ' abhay', 'father', 'husband', 'husband', 'Male', 52, 'bca', 'बीसीए', 'Netcoder Technology', 'नेटकोडर प्रौद्योगिकी', NULL, '', 'मैं अभय, 52 साल का हूँ। मैंने अपना बीसीए पूरा कर लिया है. मैं नेटकोडर टेक्नोलॉजी के रूप में काम करता हूं। मैं जतेरह गांव का रहने वाला हूं. मैं अपने समुदाय की सेवा करने और अपने क्षेत्र के विकास के लिए काम करने के लिए प्रतिबद्ध हूं।', 'I am abhay, 52 years old. I have completed my bca. I work as a Netcoder Technology. I belong to jaterh village. I am committed to serving my community and working for the development of our area.', 'abhay', 'uploads/candidates/1775116288_IMG_0072.jpg', '', '', '8350941126', NULL, NULL, NULL, NULL, NULL, 'contesting', 'pending', 0, 0, '2026-04-02 07:51:31', '2026-04-03 10:32:16', 6, 1, 1, NULL, NULL, 1, 'ADMIN-1775212336-418'),
+(50, NULL, 'HPEL20260300', 6, 1, NULL, NULL, 38, 36, NULL, NULL, 'jaterh', 'जतेरह', 'सुरेश कुमार', 'suresh kumar', 'father', 'husband', 'पति', 'Male', 25, 'bca ', 'बीसीए', 'Netcoder Technology', 'नेटकोडर प्रौद्योगिकी', NULL, '', 'मैं सुरेश कुमार, 25 साल का हूँ। मैंने अपना बीसीए पूरा कर लिया है. मैं नेटकोडर टेक्नोलॉजी के रूप में काम करता हूं। मैं जतेरह गांव का रहने वाला हूं. मैं अपने समुदाय की सेवा करने और अपने क्षेत्र के विकास के लिए काम करने के लिए प्रतिबद्ध हूं।', 'I am suresh kumar, 25 years old. I have completed my bca. I work as a Netcoder Technology. I belong to jaterh village. I am committed to serving my community and working for the development of our area.', 'suresh-kumar', 'uploads/candidates/1775117808_IMG_0035.jpg', '', '', '8350941126', NULL, NULL, NULL, NULL, NULL, 'contesting', 'pending', 0, 0, '2026-04-02 08:16:48', '2026-04-03 10:32:07', 6, 1, 1, NULL, NULL, 1, 'ADMIN-1775212327-489');
 
 --
 -- Triggers `candidates`
@@ -315,6 +435,24 @@ CREATE TRIGGER `update_candidate_slug` BEFORE UPDATE ON `candidates` FOR EACH RO
 END
 $$
 DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `candidate_entries`
+--
+
+CREATE TABLE `candidate_entries` (
+  `id` int(11) NOT NULL,
+  `candidate_id` int(11) NOT NULL,
+  `employee_id` int(11) DEFAULT NULL,
+  `action` enum('create','update','delete','approve','reject') DEFAULT 'create',
+  `old_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`old_data`)),
+  `new_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`new_data`)),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -374,7 +512,9 @@ INSERT INTO `districts` (`id`, `district_name`, `district_name_hi`, `slug`, `des
 (14, 'palampur', 'पालमपुर', 'palampur', NULL, NULL, NULL, '2026-03-13 07:37:52', '2026-03-13 07:37:52'),
 (15, 'delhi', 'दिल्ली', 'delhi', NULL, NULL, NULL, '2026-03-13 07:42:39', '2026-03-13 07:42:39'),
 (16, 'vivek', 'विवेक', 'vivek', NULL, NULL, NULL, '2026-03-13 07:51:29', '2026-03-13 07:51:29'),
-(17, 'sahil', 'साहिल', 'sahil', NULL, NULL, NULL, '2026-03-13 08:05:04', '2026-03-13 08:05:04');
+(17, 'sahil', 'साहिल', 'sahil', NULL, NULL, NULL, '2026-03-13 08:05:04', '2026-03-13 08:05:04'),
+(18, 'sss', 'sss', 'sss', NULL, NULL, NULL, '2026-03-31 20:58:56', '2026-03-31 20:58:56'),
+(19, 'test', 'परीक्षा', 'test', NULL, NULL, NULL, '2026-04-01 10:38:19', '2026-04-01 10:38:19');
 
 -- --------------------------------------------------------
 
@@ -406,24 +546,27 @@ CREATE TABLE `employees` (
   `employee_id` varchar(50) NOT NULL,
   `username` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `raw_password` varchar(255) DEFAULT NULL,
   `full_name` varchar(100) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
-  `status` enum('active','blocked','inactive') DEFAULT 'active',
+  `district_id` int(11) DEFAULT NULL,
+  `role` enum('data_entry','supervisor','manager') DEFAULT 'data_entry',
   `total_entries` int(11) DEFAULT 0,
+  `last_entry_at` datetime DEFAULT NULL,
   `last_login` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `is_active` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `employees`
 --
 
-INSERT INTO `employees` (`id`, `employee_id`, `username`, `password`, `full_name`, `email`, `phone`, `status`, `total_entries`, `last_login`, `created_at`, `updated_at`) VALUES
-(1, 'EMP001', 'employee1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'John Doe', 'john@example.com', NULL, 'active', 0, NULL, '2026-03-27 17:35:36', '2026-03-27 17:35:36'),
-(2, 'EMP002', 'employee2', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Jane Smith', 'jane@example.com', NULL, 'active', 0, NULL, '2026-03-27 17:35:36', '2026-03-27 17:35:36'),
-(3, 'EMP8186', 'admin', '$2y$10$TyjgbNT/V86MLWGuXNsyg.4JZI7LOf06jIYULWV/HcySou/OWx0Oa', 'sahil sandhu', 'sahilsandhu39234@gmail.com', '7807697370', 'active', 0, NULL, '2026-03-27 17:47:15', '2026-03-27 17:47:15');
+INSERT INTO `employees` (`id`, `employee_id`, `username`, `password`, `raw_password`, `full_name`, `email`, `phone`, `district_id`, `role`, `total_entries`, `last_entry_at`, `last_login`, `created_at`, `updated_at`, `is_active`) VALUES
+(6, 'EMP7508', 'sahilsandhu', '$2y$10$A6Vn49XcERN52uqL5OHD0.sc2Oc4cs3vW2y38Ga3gOiTLerpqVXea', NULL, 'sahil sandhu', 'sahilsandhu39234@gmail.com', '0780767370', NULL, 'data_entry', 0, NULL, '2026-04-04 11:10:02', '2026-03-31 09:51:02', '2026-04-04 05:40:02', 1),
+(7, 'EMP1503', 'ajay_saklanis', '$2y$10$0cMEz4IWe6peyByiGpj7S.x14fkyiwvW7J50UB5E.LRzQLFp2oq9e', NULL, 'sahil sandhu', 'sahilsandhu39234@gmail.com', '', NULL, '', 0, NULL, NULL, '2026-04-04 07:29:47', '2026-04-04 07:29:47', 1);
 
 -- --------------------------------------------------------
 
@@ -530,7 +673,38 @@ INSERT INTO `panchayats` (`id`, `block_id`, `panchayat_name`, `panchayat_name_hi
 (31, 22, 'rerere', 'rerere', 'rerere', 'existing', NULL, NULL, NULL, '2026-03-13 11:14:02', '2026-03-13 11:14:02'),
 (32, 12, 'ret', 'गीला करना', 'ret', 'existing', NULL, NULL, NULL, '2026-03-13 11:35:00', '2026-03-13 11:35:00'),
 (33, 25, 'test', 'परीक्षा', 'test-2', 'existing', NULL, NULL, NULL, '2026-03-14 05:56:18', '2026-03-14 05:56:18'),
-(34, 23, 'test', 'परीक्षा', 'test-3', 'existing', NULL, NULL, NULL, '2026-03-14 06:35:25', '2026-03-14 06:35:25');
+(34, 23, 'test', 'परीक्षा', 'test-3', 'existing', NULL, NULL, NULL, '2026-03-14 06:35:25', '2026-03-14 06:35:25'),
+(35, 35, 'test', 'परीक्षा', 'test-4', 'existing', NULL, NULL, NULL, '2026-04-01 10:38:46', '2026-04-01 10:38:46'),
+(36, 38, 'adhwani', 'अधवानी', 'adhwani-1', 'existing', NULL, NULL, NULL, '2026-04-02 07:44:08', '2026-04-02 07:44:08');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `representative_types`
+--
+
+CREATE TABLE `representative_types` (
+  `id` int(11) NOT NULL,
+  `type_key` varchar(50) NOT NULL,
+  `type_name` varchar(100) NOT NULL,
+  `type_name_hi` varchar(100) DEFAULT NULL,
+  `has_block` tinyint(1) DEFAULT 0,
+  `has_panchayat` tinyint(1) DEFAULT 0,
+  `has_bdc_constituency` tinyint(1) DEFAULT 0,
+  `has_zila_parishad_constituency` tinyint(1) DEFAULT 0,
+  `sort_order` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `representative_types`
+--
+
+INSERT INTO `representative_types` (`id`, `type_key`, `type_name`, `type_name_hi`, `has_block`, `has_panchayat`, `has_bdc_constituency`, `has_zila_parishad_constituency`, `sort_order`, `created_at`) VALUES
+(1, 'pradhan', 'Pradhan', 'प्रधान', 1, 1, 0, 0, 1, '2026-03-30 09:29:49'),
+(2, 'vice_pradhan', 'Vice Pradhan', 'उप प्रधान', 1, 1, 0, 0, 2, '2026-03-30 09:29:49'),
+(3, 'bdc_member', 'BDC Member', 'बीडीसी सदस्य', 1, 0, 1, 0, 3, '2026-03-30 09:29:49'),
+(4, 'zila_parishad_member', 'Zila Parishad Member', 'जिला परिषद सदस्य', 0, 0, 0, 1, 4, '2026-03-30 09:29:49');
 
 -- --------------------------------------------------------
 
@@ -558,7 +732,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `user_id`, `username`, `password`, `email`, `full_name`, `user_type`, `employee_id`, `status`, `last_login`, `created_at`, `updated_at`) VALUES
-(10, 'ADMIN001', 'admin', '$2y$10$u0qfmzO0VDo8hB7Q/qupPu80TPrm/rJx2uz5B0cNOC6awyMsHEmNi', NULL, 'Super Administrator', 'admin', 'SUPER-ADMIN-001', 'active', '2026-03-27 22:33:31', '2026-03-27 15:39:21', '2026-03-27 17:03:31');
+(10, 'ADMIN001', 'admin', '$2y$10$u0qfmzO0VDo8hB7Q/qupPu80TPrm/rJx2uz5B0cNOC6awyMsHEmNi', NULL, 'Super Administrator', 'admin', 'SUPER-ADMIN-001', 'active', '2026-03-27 22:33:31', '2026-03-27 15:39:21', '2026-03-27 17:03:31'),
+(11, 'EMP20260403557', 'admin@example.com', '$2y$10$cLbxUZXk1iBwuuvLoRtQ9uQ3GFhfcFQiduQg9u23WHcPvwKNPhmH2', 'decodersolutions2023@gmail.com', 'sanjeev kumar', 'employee', 'ENOXX-2026-744', 'inactive', NULL, '2026-04-03 10:16:35', '2026-04-03 10:46:55'),
+(20, '', 'ajay_saklani', '$2y$10$8febDIqh6P6rUQXh1HN/Ie.oFKN49UtRPbU/pQ3YrxWjkU0W79dPu', 'ajay.saklani@enoxx.id', 'Ajay Saklani', 'admin', 'ADMIN001', 'active', NULL, '2026-04-04 06:11:02', '2026-04-04 06:11:02');
 
 -- --------------------------------------------------------
 
@@ -656,6 +832,31 @@ CREATE TABLE `vw_election_stats` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `zila_parishad_constituencies`
+--
+
+CREATE TABLE `zila_parishad_constituencies` (
+  `id` int(11) NOT NULL,
+  `district_id` int(11) NOT NULL,
+  `constituency_name` varchar(100) NOT NULL,
+  `constituency_name_hi` varchar(100) DEFAULT NULL,
+  `slug` varchar(100) DEFAULT NULL,
+  `ward_number` varchar(20) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `zila_parishad_constituencies`
+--
+
+INSERT INTO `zila_parishad_constituencies` (`id`, `district_id`, `constituency_name`, `constituency_name_hi`, `slug`, `ward_number`, `created_at`) VALUES
+(1, 1, 'Dharamshala Ward 1', 'धर्मशाला वार्ड 1', 'dharamshala-ward-1', '1', '2026-03-30 09:33:29'),
+(2, 1, 'Dharamshala Ward 2', 'धर्मशाला वार्ड 2', 'dharamshala-ward-2', '2', '2026-03-30 09:33:29'),
+(3, 1, 'Kangra Ward 1', 'कांगड़ा वार्ड 1', 'kangra-ward-1', '3', '2026-03-30 09:33:29');
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `vw_candidate_details`
 --
 DROP TABLE IF EXISTS `vw_candidate_details`;
@@ -688,15 +889,31 @@ ALTER TABLE `activity_log`
 --
 ALTER TABLE `activity_logs`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `idx_activity_logs_created_at` (`created_at`),
+  ADD KEY `idx_activity_logs_user_id` (`user_id`);
+
+--
+-- Indexes for table `admin_user`
+--
+ALTER TABLE `admin_user`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`);
 
 --
 -- Indexes for table `admin_users`
 --
 ALTER TABLE `admin_users`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `username` (`username`),
-  ADD UNIQUE KEY `email` (`email`);
+  ADD UNIQUE KEY `username` (`username`);
+
+--
+-- Indexes for table `bdc_constituencies`
+--
+ALTER TABLE `bdc_constituencies`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_constituency_block` (`block_id`,`constituency_name`),
+  ADD UNIQUE KEY `slug` (`slug`);
 
 --
 -- Indexes for table `blocks`
@@ -728,8 +945,21 @@ ALTER TABLE `candidates`
   ADD KEY `idx_candidates_status_approval` (`status`,`approval_status`),
   ADD KEY `idx_candidates_jila_parishad` (`jila_parishad_id`),
   ADD KEY `idx_candidates_jila_parishad_pradhan` (`jila_parishad_pradhan`),
-  ADD KEY `created_by` (`created_by`);
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `representative_type_id` (`representative_type_id`),
+  ADD KEY `idx_candidates_location` (`district_id`,`block_id`,`panchayat_id`),
+  ADD KEY `idx_candidates_created_at` (`created_at`),
+  ADD KEY `idx_candidates_created_by` (`created_by`),
+  ADD KEY `idx_candidates_status` (`whatsapp_verified`,`approval_status`);
 ALTER TABLE `candidates` ADD FULLTEXT KEY `idx_candidate_search` (`candidate_name_en`,`candidate_name_hi`,`village`,`bio_en`,`bio_hi`);
+
+--
+-- Indexes for table `candidate_entries`
+--
+ALTER TABLE `candidate_entries`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `candidate_id` (`candidate_id`),
+  ADD KEY `employee_id` (`employee_id`);
 
 --
 -- Indexes for table `candidate_news`
@@ -788,6 +1018,13 @@ ALTER TABLE `panchayats`
   ADD KEY `idx_panchayats_block_status` (`block_id`,`status`);
 
 --
+-- Indexes for table `representative_types`
+--
+ALTER TABLE `representative_types`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `type_key` (`type_key`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -805,6 +1042,14 @@ ALTER TABLE `user_sessions`
   ADD KEY `idx_session_token` (`session_token`);
 
 --
+-- Indexes for table `zila_parishad_constituencies`
+--
+ALTER TABLE `zila_parishad_constituencies`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_constituency_district` (`district_id`,`constituency_name`),
+  ADD UNIQUE KEY `slug` (`slug`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -812,31 +1057,49 @@ ALTER TABLE `user_sessions`
 -- AUTO_INCREMENT for table `activity_log`
 --
 ALTER TABLE `activity_log`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=107;
 
 --
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
+-- AUTO_INCREMENT for table `admin_user`
+--
+ALTER TABLE `admin_user`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `admin_users`
 --
 ALTER TABLE `admin_users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `bdc_constituencies`
+--
+ALTER TABLE `bdc_constituencies`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `blocks`
 --
 ALTER TABLE `blocks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `candidates`
 --
 ALTER TABLE `candidates`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+
+--
+-- AUTO_INCREMENT for table `candidate_entries`
+--
+ALTER TABLE `candidate_entries`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `candidate_news`
@@ -848,7 +1111,7 @@ ALTER TABLE `candidate_news`
 -- AUTO_INCREMENT for table `districts`
 --
 ALTER TABLE `districts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `election_results`
@@ -860,7 +1123,7 @@ ALTER TABLE `election_results`
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `jila_parishad`
@@ -878,19 +1141,31 @@ ALTER TABLE `login_attempts`
 -- AUTO_INCREMENT for table `panchayats`
 --
 ALTER TABLE `panchayats`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+
+--
+-- AUTO_INCREMENT for table `representative_types`
+--
+ALTER TABLE `representative_types`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `user_sessions`
 --
 ALTER TABLE `user_sessions`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `zila_parishad_constituencies`
+--
+ALTER TABLE `zila_parishad_constituencies`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Constraints for dumped tables
@@ -901,6 +1176,12 @@ ALTER TABLE `user_sessions`
 --
 ALTER TABLE `activity_logs`
   ADD CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `bdc_constituencies`
+--
+ALTER TABLE `bdc_constituencies`
+  ADD CONSTRAINT `bdc_constituencies_ibfk_1` FOREIGN KEY (`block_id`) REFERENCES `blocks` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `blocks`
@@ -919,7 +1200,15 @@ ALTER TABLE `candidates`
   ADD CONSTRAINT `candidates_ibfk_3` FOREIGN KEY (`panchayat_id`) REFERENCES `panchayats` (`id`),
   ADD CONSTRAINT `candidates_ibfk_4` FOREIGN KEY (`jila_parishad_id`) REFERENCES `jila_parishad` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `candidates_ibfk_5` FOREIGN KEY (`created_by`) REFERENCES `employees` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `candidates_ibfk_6` FOREIGN KEY (`created_by`) REFERENCES `employees` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `candidates_ibfk_6` FOREIGN KEY (`created_by`) REFERENCES `employees` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `candidates_ibfk_7` FOREIGN KEY (`representative_type_id`) REFERENCES `representative_types` (`id`);
+
+--
+-- Constraints for table `candidate_entries`
+--
+ALTER TABLE `candidate_entries`
+  ADD CONSTRAINT `candidate_entries_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `candidates` (`id`),
+  ADD CONSTRAINT `candidate_entries_ibfk_2` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`);
 
 --
 -- Constraints for table `candidate_news`
@@ -951,6 +1240,12 @@ ALTER TABLE `panchayats`
 --
 ALTER TABLE `user_sessions`
   ADD CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `zila_parishad_constituencies`
+--
+ALTER TABLE `zila_parishad_constituencies`
+  ADD CONSTRAINT `zila_parishad_constituencies_ibfk_1` FOREIGN KEY (`district_id`) REFERENCES `districts` (`id`) ON DELETE CASCADE;
 
 DELIMITER $$
 --

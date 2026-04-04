@@ -343,9 +343,31 @@ if ($block_slug) {
 $levelIcon = [
     'districts'  => 'map',
     'blocks'     => 'domain',
-    'panchayats' => 'cottage',
+    'panchayat'  => 'cottage',
     'candidates' => 'how_to_reg',
 ];
+
+// District Specific Semantic Icons
+function getDistrictIcon($district_name_en) {
+    $name = strtolower(trim($district_name_en));
+    $map = [
+        'kangra'           => 'temple_hindu',
+        'shimla'           => 'apartment',
+        'mandi'            => 'waves',
+        'kullu'            => 'terrain',
+        'chamba'           => 'landscape',
+        'hamirpur'         => 'school',
+        'una'              => 'factory',
+        'bilaspur'         => 'water',
+        'solan'            => 'agriculture',
+        'sirmaur'          => 'forest',
+        'kinnaur'          => 'ac_unit',
+        'lahaul'           => 'cloud_sync',
+        'lahaul & spiti'   => 'cloud_sync',
+        'lahaul and spiti' => 'cloud_sync'
+    ];
+    return $map[$name] ?? 'map';
+}
 ?>
 <!DOCTYPE html>
 <html class="light" lang="<?php echo $current_language; ?>">
@@ -357,6 +379,7 @@ $levelIcon = [
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <script>
 tailwind.config = {
     darkMode: "class",
@@ -541,42 +564,194 @@ tailwind.config = {
         transform: translateY(-2px);
         box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
     }
-    .panchayat-stats {
-        background: linear-gradient(135deg, rgba(247,190,29,0.1) 0%, rgba(247,190,29,0.05) 100%);
+    .district-card {
+        background: #ffffff;
+        border-radius: 2rem;
+        padding: 2rem;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 2px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    .district-card:hover {
+        transform: translateY(-10px);
+        border-color: #f7be1d;
+        box-shadow: 0 20px 40px rgba(247, 190, 29, 0.15);
+    }
+    .district-icon-wrapper {
+        width: 70px;
+        height: 70px;
+        border-radius: 1.5rem;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        color: #1e293b;
+        transition: all 0.3s ease;
+    }
+    .district-card:hover .district-icon-wrapper {
+        background: #f7be1d;
+        color: #ffffff;
+        transform: rotate(10deg) scale(1.1);
+    }
+    .district-icon-wrapper span { font-size: 36px; }
+    
+    .district-title {
+        font-family: 'Public Sans', sans-serif;
+        font-weight: 900;
+        font-size: 1.75rem;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+        transition: color 0.3s ease;
+    }
+    .district-card:hover .district-title { color: #785a00; }
+
+    :root {
+        --header-top-bg: #000000;
+        --header-main-bg: #ffffff;
+        --text-on-main: #1e293b;
+        --text-on-top: #ffffff;
+        --surface-low: #f8fafc;
+        --border-color: rgba(0, 0, 0, 0.08);
+    }
+    .dark {
+        --header-top-bg: #000000;
+        --header-main-bg: #0f172a;
+        --text-on-main: #f8fafc;
+        --text-on-top: #ffffff;
+        --surface-low: #1e293b;
+        --border-color: rgba(255, 255, 255, 0.1);
+    }
+    body { background-color: var(--surface-low); color: var(--text-on-main); transition: background-color 0.3s ease; }
+    
+    .top-bar { background-color: var(--header-top-bg); color: var(--text-on-top); height: 40px; }
+    .main-header { background-color: var(--header-main-bg); border-bottom: 2px solid var(--border-color); height: 80px; }
+    .nav-link { color: var(--text-on-main); font-weight: 700; transition: color 0.2s; }
+    .nav-link:hover { color: #f7be1d; }
+    
+    .social-icon {
+        width: 30px;
+        height: 30px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    .social-icon:hover { background: #f7be1d; color: black; transform: scale(1.1); }
+    
+    .theme-toggle { cursor: pointer; color: white; font-size: 18px; }
+
+    /* Custom Scrollbar for Dark Mode */
+    .dark ::-webkit-scrollbar { width: 10px; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 5px; }
+    .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* Header Link Dropdown */
+    .nav-link-with-arrow::after {
+        content: 'expand_more';
+        font-family: 'Material Symbols Outlined';
+        font-size: 16px;
+        vertical-align: middle;
+        margin-left: 2px;
+        opacity: 0.5;
     }
 </style>
+
+<script>
+    // Theme Logic (Immediate apply to prevent flicker)
+    (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    })();
+</script>
 </head>
-<body class="font-body">
+<body class="font-body transition-colors duration-300">
 
-<!-- HEADER -->
-<header data-html2canvas-ignore="true" class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-md border-b border-primary/20 shadow-sm no-print">
-    <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <a href="index.php" class="flex items-center">
-            <img src="uploads/official_enoxx_logo.png" alt="Enoxx News" class="h-10 sm:h-11 w-auto">
-        </a>
-        
-        <nav class="hidden lg:flex items-center gap-8 text-[11px] font-black uppercase tracking-widest">
-            <a href="index.php" class="<?php echo !$candidate_slug && !$search_query && !isset($_GET['verified']) ? 'text-primary border-b-2 border-primary pb-1' : 'text-on-surface/60 hover:text-primary'; ?> transition"><?php echo langs_text('उम्मीदवार','Candidates'); ?></a>
-            <a href="?verified=1" class="<?php echo isset($_GET['verified']) ? 'text-primary border-b-2 border-primary pb-1' : 'text-on-surface/60 hover:text-primary'; ?> transition"><?php echo langs_text('सत्यापित','Verified'); ?></a>
-            <a href="#" class="text-on-surface/60 hover:text-primary transition"><?php echo langs_text('संग्रह','Archive'); ?></a>
-            <a href="#" class="text-on-surface/60 hover:text-primary transition"><?php echo langs_text('सेटिंग्स','Settings'); ?></a>
-        </nav>
-
-        <div class="flex items-center gap-4">
-            <div class="flex bg-surface-container rounded-full p-1 border border-outline-variant/30">
-                <?php 
-                $queryParams = $_GET;
-                $queryParams['lang'] = 'en';
-                $enLink = '?' . http_build_query($queryParams);
-                $queryParams['lang'] = 'hi';
-                $hiLink = '?' . http_build_query($queryParams);
-                ?>
-                <a href="<?php echo $enLink; ?>" class="px-3 py-1 rounded-full text-[10px] font-bold <?php echo $current_language==='en'?'bg-primary text-white shadow-sm':'text-on-surface/40'; ?>">EN</a>
-                <a href="<?php echo $hiLink; ?>" class="px-3 py-1 rounded-full text-[10px] font-bold <?php echo $current_language==='hi'?'bg-primary text-white shadow-sm':'text-on-surface/40'; ?>">हिं</a>
+<!-- STICKY HEADER WRAPPER -->
+<div class="sticky top-0 z-[110] w-full no-print">
+    <!-- TOP BAR (Black) -->
+    <div class="top-bar relative z-[110]" data-html2canvas-ignore="true">
+        <div class="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <div class="text-[10px] font-black uppercase tracking-widest opacity-80">
+                    <span id="currentDate"></span> | LIVE
+                </div>
             </div>
-            <button class="text-on-surface/60 hover:text-primary mt-1"><span class="material-symbols-outlined">search</span></button>
+            
+            <div class="flex items-center gap-4">
+                <div class="flex gap-2">
+                    <a href="https://facebook.com/enoxxnews" target="_blank" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                    <a href="https://twitter.com/enoxxnews" target="_blank" class="social-icon"><i class="fab fa-x-twitter"></i></a>
+                    <a href="https://instagram.com/enoxxnews" target="_blank" class="social-icon"><i class="fab fa-instagram"></i></a>
+                    <a href="https://youtube.com/@enoxxnews" target="_blank" class="social-icon"><i class="fab fa-youtube"></i></a>
+                </div>
+                <div class="w-px h-4 bg-white/20 mx-2"></div>
+                <button onclick="toggleTheme()" class="theme-toggle flex items-center gap-2 hover:text-primary transition-all">
+                    <span id="themeIcon" class="material-symbols-outlined !text-[18px]">nightlight</span>
+                </button>
+            </div>
         </div>
     </div>
+
+    <!-- HEADER (White) -->
+    <header data-html2canvas-ignore="true" class="main-header w-full backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+            <div class="flex items-center gap-8">
+                <a href="index.php" class="flex items-center">
+                    <img src="https://enoxxnews.in/wp-content/uploads/2026/01/Enoxx-News-Logo-Website-670x80-1.png" 
+                         alt="Enoxx News" 
+                         class="h-10 sm:h-12 w-auto object-contain dark:brightness-0 dark:invert transition-all">
+                </a>
+                
+                <nav class="hidden lg:flex items-center gap-6 text-[12px] uppercase tracking-tighter">
+                    <a href="index.php" class="nav-link"><?php echo langs_text('होम', 'Home'); ?></a>
+                    <a href="#" class="nav-link nav-link-with-arrow"><?php echo langs_text('हिमाचल', 'Himachal'); ?></a>
+                    <a href="?verified=1" class="nav-link"><?php echo langs_text('राजनीति', 'Politics'); ?></a>
+                    <a href="#" class="nav-link nav-link-with-arrow"><?php echo langs_text('कारोबार', 'Business'); ?></a>
+                    <a href="#" class="nav-link nav-link-with-arrow"><?php echo langs_text('टेक्नोलॉजी', 'Tech'); ?></a>
+                    <a href="#" class="nav-link nav-link-with-arrow"><?php echo langs_text('खेल', 'Sports'); ?></a>
+                    <a href="#" class="nav-link"><?php echo langs_text('विचार', 'Opinion'); ?></a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <button onclick="triggerSearch()" class="text-on-main hover:text-primary transition-all">                   <span class="material-symbols-outlined font-black">search</span>               </button>
+                <div class="hidden sm:flex bg-surface-low rounded-xl p-1 border border-primary/10">
+                    <?php 
+                    $queryParams = $_GET;
+                    $queryParams['lang'] = 'en'; $enLink = '?' . http_build_query($queryParams);
+                    $queryParams['lang'] = 'hi'; $hiLink = '?' . http_build_query($queryParams);
+                    ?>
+                    <a href="<?php echo $enLink; ?>" class="px-4 py-1.5 rounded-lg text-[9px] font-black tracking-widest <?php echo $current_language==='en'?'bg-primary text-black':'text-on-main opacity-40'; ?> transition-all">EN</a>
+                    <a href="<?php echo $hiLink; ?>" class="px-4 py-1.5 rounded-lg text-[9px] font-black tracking-widest <?php echo $current_language==='hi'?'bg-primary text-black':'text-on-main opacity-40'; ?> transition-all">हिं</a>
+                </div>
+                <a href="employee/index.php" class="w-10 h-10 rounded-full bg-primary text-black flex items-center justify-center hover:rotate-12 transition-all shadow-lg shadow-primary/20">
+                    <span class="material-symbols-outlined font-black">person</span>
+                </a>
+            </div>
+        </div>
+    </header>
+</div>
     
     <!-- TICKER -->
     <div class="ticker-container">
@@ -808,6 +983,39 @@ tailwind.config = {
     </div>
 
     <script>
+    function toggleMobileMenu() {
+        const drawer = document.getElementById('mobile-drawer');
+        drawer.classList.toggle('active');
+        document.body.style.overflow = drawer.classList.contains('active') ? 'hidden' : '';
+    }
+
+    function toggleTheme() {
+        const html = document.documentElement;
+        html.classList.toggle('dark');
+        const isDark = html.classList.contains('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        updateThemeIcon();
+    }
+
+    function updateThemeIcon() {
+        const icon = document.getElementById('themeIcon');
+        if (!icon) return;
+        const isDark = document.documentElement.classList.contains('dark');
+        icon.innerText = isDark ? 'light_mode' : 'nightlight';
+    }
+
+    function updateDate() {
+        const d = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const langCode = '<?php echo $current_language === 'hi' ? 'hi-IN' : 'en-US'; ?>';
+        document.getElementById('currentDate').innerText = d.toLocaleDateString(langCode, options);
+    }
+
+    window.onload = function() {
+        updateDate();
+        updateThemeIcon();
+    };
+
     async function downloadDossier() {
         const el = document.getElementById('capture-area');
         const ov = document.getElementById('loading-overlay');
@@ -826,30 +1034,48 @@ tailwind.config = {
             });
             
             await Promise.all(imagePromises);
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 800));
             
+            // Force high-quality capture with specific desktop dimensions
             const canvas = await html2canvas(el, { 
-                scale: 2.5, 
-                backgroundColor: '#fff8f2', 
+                scale: 4, // Ultra high resolution
+                backgroundColor: '#ffffff', 
                 useCORS: true,
                 logging: false,
                 allowTaint: false,
+                width: 1200, // Fixed width for consistent layout
+                windowWidth: 1400,
                 onclone: function(clonedDoc, element) {
-                    const watermark = clonedDoc.querySelector('.download-watermark');
-                    if (watermark) {
-                        watermark.style.display = 'block';
-                        watermark.style.opacity = '0.05';
+                    // Force the capture element to look like the desktop version
+                    element.style.width = '1200px';
+                    element.style.padding = '0';
+                    element.style.margin = '0';
+                    element.style.borderRadius = '0';
+                    
+                    const profileCard = element.querySelector('.profile-card');
+                    if (profileCard) {
+                        profileCard.style.display = 'flex';
+                        profileCard.style.flexDirection = 'row';
+                        profileCard.style.width = '100%';
+                        
+                        const photoArea = profileCard.querySelector('.md\\:w-2\\/5');
+                        const detailArea = profileCard.querySelector('.md\\:w-3\\/5');
+                        if (photoArea && detailArea) {
+                            photoArea.style.width = '40%';
+                            detailArea.style.width = '60%';
+                            photoArea.style.minHeight = '600px';
+                        }
                     }
                 }
             });
             
             const link = document.createElement('a');
-            link.download = `ENOXX_CANDIDATE_<?php echo $view_candidate['id']; ?>_<?php echo date('Y-m-d'); ?>.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.download = `ENOXX_PRO_<?php echo $view_candidate['id']; ?>.png`;
+            link.href = canvas.toDataURL('image/png', 1.0);
             link.click();
         } catch(e) { 
             console.error(e);   
-            alert('<?php echo langs_text('डाउनलोड में त्रुटि', 'Error generating document'); ?>'); 
+            alert('<?php echo langs_text('डाउनलोड में त्रुटि', 'Error generating high-resolution document'); ?>'); 
         } finally { 
             ov.style.display = 'none'; 
         }
@@ -1084,7 +1310,22 @@ tailwind.config = {
                 $link = "index.php?district=$slug&lang=$current_language";
                 $count = $item['block_count'] ?? 0;
                 $countLabel = langs_text('ब्लॉक', 'Blocks');
-                $icon = 'map';
+                $dIcon = getDistrictIcon($name_en);
+        ?>
+        <a href="<?php echo $link; ?>" class="district-card group">
+            <div class="district-icon-wrapper">
+                <span class="material-symbols-outlined"><?php echo $dIcon; ?></span>
+            </div>
+            <h3 class="district-title"><?php echo htmlspecialchars(langs_text($name_hi,$name_en)); ?></h3>
+            <div class="flex items-center gap-2 mt-2">
+                <div class="h-px w-8 bg-primary/20 group-hover:w-12 transition-all"></div>
+                <p class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest"><?php echo number_format($count); ?> <?php echo $countLabel; ?></p>
+            </div>
+            <div class="mt-6 flex items-center justify-center w-10 h-10 rounded-full border border-primary/10 text-primary group-hover:bg-primary group-hover:text-black transition-all">
+                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </div>
+        </a>
+        <?php 
             elseif($current_level === 'candidates'):
                 $slug = $item['slug'] ?? null;
                 $name_hi = $item['candidate_name_hi'] ?? '';
@@ -1134,13 +1375,15 @@ tailwind.config = {
                 $countLabel = langs_text('पंचायतें', 'Panchayats');
                 $icon = 'domain';
             ?>
-        <a href="<?php echo $link; ?>" class="news-card rounded-[2rem] p-8 group">
-            <div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface/20 group-hover:bg-primary group-hover:text-white transition-all mb-4 shadow-sm border border-primary/5">
-                <span class="material-symbols-outlined"><?php echo $icon; ?></span>
+        <a href="<?php echo $link; ?>" class="news-card rounded-[2rem] p-8 group text-center flex flex-col items-center">
+            <div class="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-black transition-all mb-6 shadow-sm border border-primary/5">
+                <span class="material-symbols-outlined text-3xl"><?php echo $icon; ?></span>
             </div>
             <h3 class="text-2xl font-headline font-black text-on-surface group-hover:text-primary transition uppercase tracking-tighter leading-none"><?php echo htmlspecialchars(langs_text($name_hi,$name_en)); ?></h3>
-            <p class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest mt-2"><?php echo number_format($count); ?> <?php echo $countLabel; ?></p>
-            <div class="mt-6 text-[9px] font-black text-primary uppercase tracking-widest border-b border-transparent group-hover:border-primary inline-block"><?php echo langs_text('रजिस्ट्री देखें →','Explore Registry →'); ?></div>
+            <div class="flex items-center gap-2 mt-3">
+                 <p class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest"><?php echo number_format($count); ?> <?php echo $countLabel; ?></p>
+            </div>
+            <div class="mt-6 text-[9px] font-black text-primary uppercase tracking-widest group-hover:bg-primary group-hover:text-black px-4 py-2 rounded-full border border-primary/10 transition-all"><?php echo langs_text('रजिस्ट्री देखें','Explore Registry'); ?></div>
         </a>
         <?php endif; endforeach; ?>
     </div>
@@ -1193,5 +1436,55 @@ tailwind.config = {
     </div>
 </div>
 
+
+<script>
+    // Theme Toggle Logic
+    function updateThemeIcon(isDark) {
+        const icon = document.getElementById('themeIcon');
+        if (icon) {
+            icon.textContent = isDark ? 'light_mode' : 'nightlight';
+        }
+    }
+
+    function toggleTheme() {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        updateThemeIcon(isDark);
+    }
+
+    // Initialize Theme and Events
+    document.addEventListener('DOMContentLoaded', () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        updateThemeIcon(isDark);
+        
+        // Dynamic Date
+        const dateEl = document.getElementById('currentDate');
+        if (dateEl) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateEl.textContent = new Date().toLocaleDateString('<?php echo ($current_language === 'hi' ? 'hi-IN' : 'en-US'); ?>', options);
+        }
+
+        // Header Scroll Shadow
+        const headerContainer = document.querySelector('.sticky');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 10) {
+                headerContainer.classList.add('shadow-2xl', 'bg-white/95', 'dark:bg-slate-900/95');
+                headerContainer.style.backdropFilter = 'blur(12px)';
+            } else {
+                headerContainer.classList.remove('shadow-2xl', 'bg-white/95', 'dark:bg-slate-900/95');
+                headerContainer.style.backdropFilter = '';
+            }
+        });
+    });
+
+    // Search Trigger Logic
+    function triggerSearch() {
+        const query = prompt('<?php echo langs_text('खोजें (नाम, गांव, जिला)...', 'Search Registry (Name, Village, District)...'); ?>');
+        if (query && query.trim() !== '') {
+            window.location.href = 'index.php?search=' + encodeURIComponent(query.trim());
+        }
+    }
+</script>
 </body>
 </html>
+
