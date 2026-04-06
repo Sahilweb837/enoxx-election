@@ -403,6 +403,32 @@ if (isset($_POST['ajax_action'])) {
             exit;
         }
         
+        // Get candidates for a specific location (to avoid duplicates)
+        if ($_POST['ajax_action'] === 'get_location_candidates') {
+            $district_id = (int)($_POST['district_id'] ?? 0);
+            $block_id = (int)($_POST['block_id'] ?? 0);
+            $panchayat_id = (int)($_POST['panchayat_id'] ?? 0);
+            
+            $where = "WHERE district_id = ?";
+            $params = [$district_id];
+            
+            if ($block_id > 0) {
+                $where .= " AND block_id = ?";
+                $params[] = $block_id;
+            }
+            if ($panchayat_id > 0) {
+                $where .= " AND panchayat_id = ?";
+                $params[] = $panchayat_id;
+            }
+            
+            $stmt = $pdo->prepare("SELECT candidate_name_en, mobile_number FROM candidates $where ORDER BY candidate_name_en ASC");
+            $stmt->execute($params);
+            $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode(['success' => true, 'candidates' => $candidates]);
+            exit;
+        }
+        
         // Save Candidate
         if ($_POST['ajax_action'] === 'save_candidate') {
             $candidate_data = [
@@ -521,6 +547,130 @@ if (isset($_POST['ajax_action'])) {
             ]);
             exit;
         }
+
+        // AJAX - Search Candidates by Phone (for Quick Verification)
+        if ($_POST['ajax_action'] === 'search_candidates_by_phone') {
+            $phone = trim($_POST['phone']);
+            if (empty($phone)) {
+                echo json_encode(['success' => true, 'candidates' => []]);
+                exit;
+            }
+            
+            $stmt = $pdo->prepare("
+                SELECT id, candidate_id, candidate_name_en, candidate_name_hi, mobile_number, transaction_id
+                FROM candidates 
+                WHERE mobile_number LIKE ?
+                LIMIT 10
+            ");
+            $stmt->execute(["%$phone%"]);
+            $candidates = $stmt->fetchAll();
+            
+            echo json_encode(['success' => true, 'candidates' => $candidates]);
+            exit;
+        }
+
+        // AJAX DataTables - Verifications List (Pending/Verified)
+        if ($_POST['ajax_action'] === 'get_verifications_json') {
+            $draw = (int)$_POST['draw'];
+            $start = (int)$_POST['start'];
+            $length = (int)$_POST['length'];
+            $search_value = $_POST['search']['value'] ?? '';
+            $filter_type = $_POST['filter_type'] ?? 'all'; // 'all', 'pending', 'verified'
+            
+            $where = "WHERE 1=1";
+            $params = [];
+            
+            if ($filter_type === 'pending') {
+                $where .= " AND (c.transaction_id IS NULL OR c.transaction_id = '')";
+            } elseif ($filter_type === 'verified') {
+                $where .= " AND (c.transaction_id IS NOT NULL AND c.transaction_id != '')";
+            }
+            
+            if (!empty($search_value)) {
+                $where .= " AND (c.candidate_name_en LIKE ? OR c.candidate_id LIKE ? OR c.mobile_number LIKE ?)";
+                $st = "%$search_value%";
+                $params = array_merge($params, [$st, $st, $st]);
+            }
+            
+            // Filtered Count
+            $filteredStmt = $pdo->prepare("SELECT COUNT(*) FROM candidates c $where");
+            $filteredStmt->execute($params);
+            $filteredCount = $filteredStmt->fetchColumn();
+            
+            // Paginated Data
+            $stmt = $pdo->prepare("
+                SELECT c.*, p.panchayat_name
+                FROM candidates c
+                LEFT JOIN panchayats p ON c.panchayat_id = p.id
+                $where
+                ORDER BY c.created_at DESC
+                LIMIT $length OFFSET $start
+            ");
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll();
+            
+            $data = [];
+            foreach ($rows as $r) {
+                $txn_display = !empty($r['transaction_id']) 
+                    ? '<span class="txn-badge verified">'.htmlspecialchars($r['transaction_id']).'</span>' 
+                    : '<span class="txn-badge pending">Missing</span>';
+                
+                $status = !empty($r['transaction_id']) 
+                    ? '<span class="txn-badge verified"><i class="fas fa-check-circle"></i> Verified</span>' 
+                    : '<span class="txn-badge pending"><i class="fas fa-clock"></i> Pending</span>';
+
+                $data[] = [
+                    'id_display' => htmlspecialchars($r['candidate_id'] ?? $r['id']),
+                    'name' => '<strong>'.htmlspecialchars($r['candidate_name_en']).'</strong>',
+                    'panchayat' => htmlspecialchars($r['panchayat_name'] ?? 'N/A'),
+                    'mobile' => htmlspecialchars($r['mobile_number'] ?? 'N/A'),
+                    'txn_id' => $txn_display,
+                    'status' => $status,
+                    'action' => '<button class="action-btn btn-edit" onclick="openTransactionModal('.$r['id'].', \''.htmlspecialchars($r['transaction_id'] ?? '').'\')"><i class="fas fa-receipt"></i> Manage TXN</button>'
+                ];
+            }
+            
+            echo json_encode([
+                "draw" => $draw,
+                "recordsTotal" => (int)$pdo->query("SELECT COUNT(*) FROM candidates")->fetchColumn(),
+                "recordsFiltered" => (int)$filteredCount,
+                "data" => $data
+            ]);
+            exit;
+        }
+
+        // Save Transaction ID
+        if ($_POST['ajax_action'] === 'save_transaction_id') {
+            $candidate_id = (int)$_POST['candidate_id'];
+            $transaction_id = trim($_POST['transaction_id']);
+            
+            if (empty($transaction_id)) {
+                echo json_encode(['success' => false, 'message' => 'Transaction ID cannot be empty']);
+                exit;
+            }
+            
+            $stmt = $pdo->prepare("UPDATE candidates SET transaction_id = ?, updated_at = NOW() WHERE id = ?");
+            if ($stmt->execute([$transaction_id, $candidate_id])) {
+                echo json_encode(['success' => true, 'message' => 'Transaction ID saved successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to save Transaction ID']);
+            }
+            exit;
+        }
+
+        // Delete Transaction ID
+        if ($_POST['ajax_action'] === 'delete_transaction_id') {
+            $candidate_id = (int)$_POST['candidate_id'];
+            
+            $stmt = $pdo->prepare("UPDATE candidates SET transaction_id = NULL, updated_at = NOW() WHERE id = ?");
+            if ($stmt->execute([$candidate_id])) {
+                echo json_encode(['success' => true, 'message' => 'Transaction ID removed successfully']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to remove Transaction ID']);
+            }
+            exit;
+        }
+
         
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
@@ -702,6 +852,10 @@ try {
     $totalBlocks = $pdo->query("SELECT COUNT(*) FROM blocks")->fetchColumn();
     $totalPanchayats = $pdo->query("SELECT COUNT(*) FROM panchayats")->fetchColumn();
     
+    // Stats for verification
+    $verifiedCount = $pdo->query("SELECT COUNT(*) FROM candidates WHERE transaction_id IS NOT NULL AND transaction_id != ''")->fetchColumn();
+    $pendingCount = $pdo->query("SELECT COUNT(*) FROM candidates WHERE transaction_id IS NULL OR transaction_id = ''")->fetchColumn();
+    
     $recentCandidates = $pdo->query("
         SELECT c.*, 
                d.district_name, d.district_name_hi,
@@ -728,11 +882,10 @@ try {
     $totalDistricts = 0;
     $totalBlocks = 0;
     $totalPanchayats = 0;
+    $verifiedCount = 0;
+    $pendingCount = 0;
     $error = "Database Error: " . $e->getMessage();
 }
-
-$verifiedCount = count(array_filter($allCandidates, function($c) { return !empty($c['transaction_id']); }));
-$pendingCount = count(array_filter($allCandidates, function($c) { return empty($c['transaction_id']); }));
 ?>
 
 <!DOCTYPE html>
@@ -972,6 +1125,85 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         .action-btn { padding: 6px 12px; border-radius: 8px; font-size: 0.85em; cursor: pointer; border: none; transition: all 0.3s; }
         .btn-edit { background: var(--primary); color: white; }
         .btn-edit:hover { transform: scale(1.05); box-shadow: 0 2px 8px rgba(217,119,6,0.3); }
+
+        /* Responsive Improvements */
+        @media (max-width: 1200px) {
+            .stats-grid, .location-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 992px) {
+            :root { --sidebar-width: 80px; }
+            .sidebar-header .logo { font-size: 1.2em; }
+            .sidebar-header div { display: none; }
+            .menu-item span { display: none; }
+            .menu-item i { font-size: 1.4em; }
+            .main-content { margin-left: 80px; }
+        }
+        @media (max-width: 768px) {
+            .main-content { margin-left: 0; padding-bottom: 80px; }
+            .sidebar { 
+                width: 100%; height: auto; bottom: 0; top: auto; 
+                flex-direction: row; border-top: 1px solid rgba(255,255,255,0.1);
+            }
+            .sidebar-header { display: none; }
+            .sidebar-menu { display: flex; justify-content: space-around; padding: 10px; }
+            .menu-item { flex-direction: column; gap: 5px; font-size: 0.7em; }
+            .stats-grid, .location-grid, .form-grid { grid-template-columns: 1fr; }
+            .top-header { padding: 10px 15px; }
+            .header-search { width: 150px; }
+            .content-area { padding: 15px; }
+        }
+
+        /* Existing Candidates Lookup UI */
+        .existing-candidates-card {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px dashed var(--border);
+            display: none; /* Only show when location is selected */
+        }
+        .existing-candidates-card.active { display: block; animation: slideIn 0.3s ease; }
+        .existing-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: var(--dark);
+            font-weight: 700;
+            font-size: 0.95em;
+        }
+        .existing-card-header i { color: var(--primary); }
+        .candidate-scroll-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .candidate-mini-card {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            font-size: 0.85em;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 150px;
+            transition: all 0.2s;
+        }
+        .candidate-mini-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+        .candidate-mini-name { font-weight: 700; color: var(--dark); }
+        .candidate-mini-mobile { color: var(--text-muted); font-size: 0.9em; }
+        .no-candidates-msg {
+            color: var(--secondary);
+            font-weight: 600;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         
         /* Alerts */
         .alert { padding: 15px 20px; border-radius: 12px; margin: 15px 0; display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease; }
@@ -1261,6 +1493,18 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                                     <small id="village_hi_preview" style="color:#10b981; display:none;"><i class="fas fa-check-circle"></i> Hindi: <span></span></small>
                                 </div>
                             </div>
+
+                            <!-- EXISTING CANDIDATES LOOKUP (DYNAMIC) -->
+                            <div class="existing-candidates-card" id="existingCandidatesCard">
+                                <div class="existing-card-header">
+                                    <i class="fas fa-id-card-alt"></i>
+                                    <span>Registered in this Location</span>
+                                </div>
+                                <div id="existingCandidatesList" class="candidate-scroll-list">
+                                    <!-- Dynamic list populated by JS -->
+                                </div>
+                            </div>
+
                             <div id="duplicateAlert" class="duplicate-warning"></div>
                         </div>
 
@@ -1419,44 +1663,29 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 </div>
             </div>
             
-            <!-- Scripts to initialize DataTables -->
-            <script>
-            $(document).ready(function() {
-                $('#candidatesDataTable').DataTable({
-                    processing: true,
-                    serverSide: true,
-                    ajax: {
-                        url: window.location.href,
-                        type: 'POST',
-                        data: {
-                            ajax_action: 'get_candidates_json'
-                        }
-                    },
-                    columns: [
-                        { data: 'id_display' },
-                        { data: 'name_en' },
-                        { data: 'name_hi' },
-                        { data: 'status' },
-                        { data: 'position' },
-                        { data: 'district' },
-                        { data: 'panchayat' },
-                        { data: 'mobile' },
-                        { data: 'txn_btn' },
-                        { data: 'action', orderable: false }
-                    ],
-                    responsive: true,
-                    pageLength: 25,
-                    order: [[0, 'desc']], // Most recent first
-                    language: {
-                        processing: '<div class="stat-icon"><i class="fas fa-spinner fa-spin"></i> Loading...</div>'
-                    }
-                });
-            });
-            </script>
+            </div>
 
             <!-- Verifications Page -->
             <div id="verifications-page" class="page-content">
                 <div><h1>Payment Verification</h1><p>Manage candidate Transaction IDs</p></div>
+                
+                <!-- Quick Verification by Phone -->
+                <div class="location-section" style="margin: 20px 0; background: linear-gradient(135deg, #fffbeb, #fff); border: 1px solid #fde68a;">
+                    <h3 style="color: #d97706;"><i class="fas fa-search-dollar"></i> Quick Search by Phone</h3>
+                    <div class="form-grid" style="grid-template-columns: 1fr 2fr;">
+                        <div class="form-group">
+                            <label>Enter Mobile Number</label>
+                            <input type="text" id="verifyPhoneInput" placeholder="Enter number..." onkeyup="searchByPhone(this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Available Candidates (Select one)</label>
+                            <select id="verifyCandidateSelect" class="form-control" onchange="selectCandidateForTxn(this.value)">
+                                <option value="">Type phone number to search...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="stats-grid" style="margin: 20px 0;">
                     <div class="stat-card"><div class="stat-value" style="color:#10b981;"><?php echo $verifiedCount; ?></div><div class="stat-label">Verified</div></div>
                     <div class="stat-card"><div class="stat-value" style="color:#f59e0b;"><?php echo $pendingCount; ?></div><div class="stat-label">Pending</div></div>
@@ -1464,20 +1693,10 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 <div class="candidates-table">
                     <table id="verificationsTable" class="display responsive nowrap" style="width:100%">
                         <thead>
-                            <tr><th>ID</th><th>Candidate (English/Hindi)</th><th>Position</th><th>Mobile</th><th>Transaction ID</th><th>Status</th><th>Action</th> </tr>
+                            <tr><th>ID</th><th>Candidate</th><th>Position</th><th>Mobile</th><th>Transaction ID</th><th>Status</th><th>Action</th> </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($allCandidates as $c): ?>
-                            <tr id="vrow-<?php echo $c['id']; ?>">
-                                <td><?php echo htmlspecialchars($c['candidate_id'] ?? $c['id']); ?></td>
-                                <td><strong><?php echo htmlspecialchars($c['candidate_name_en'] ?? ''); ?></strong><br><small><?php echo htmlspecialchars($c['candidate_name_hi'] ?? ''); ?></small></td>
-                                <td><?php echo htmlspecialchars($c['type_name_hi'] ?? $c['type_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($c['mobile_number'] ?? 'N/A'); ?></td>
-                                <td id="vtxn-<?php echo $c['id']; ?>"><?php echo !empty($c['transaction_id']) ? '<code>' . htmlspecialchars($c['transaction_id']) . '</code>' : '<span style="color:#94a3b8;">Not set</span>'; ?></td>
-                                <td id="vstatus-<?php echo $c['id']; ?>"><?php echo !empty($c['transaction_id']) ? '<span style="background:#d1fae5; color:#059669; padding:3px 10px; border-radius:20px;">Verified</span>' : '<span style="background:#fef3c7; color:#d97706; padding:3px 10px; border-radius:20px;">Pending</span>'; ?></td>
-                                <td><button class="action-btn btn-edit" onclick="openTransactionModal(<?php echo $c['id']; ?>, '<?php echo htmlspecialchars($c['transaction_id'] ?? ''); ?>')"><i class="fas fa-receipt"></i> Manage TXN</button></td>
-                            </tr>
-                            <?php endforeach; ?>
+                            <!-- Loaded via DataTables AJAX -->
                         </tbody>
                     </table>
                 </div>
@@ -1529,22 +1748,112 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         let currentBlockName = '';
 
         $(document).ready(function() {
-            // verificationsTable uses standard client-side processing as it has fewer rows
-            $('#verificationsTable').DataTable({
+            // Main Candidates Table
+            $('#candidatesDataTable').DataTable({
+                destroy: true,
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: window.location.href,
+                    type: 'POST',
+                    data: { ajax_action: 'get_candidates_json' }
+                },
+                columns: [
+                    { data: 'id_display' },
+                    { data: 'name_en' },
+                    { data: 'name_hi' },
+                    { data: 'status' },
+                    { data: 'position' },
+                    { data: 'district' },
+                    { data: 'panchayat' },
+                    { data: 'mobile' },
+                    { data: 'txn_btn' },
+                    { data: 'action', orderable: false }
+                ],
                 responsive: true,
                 pageLength: 25,
                 order: [[0, 'desc']],
-                language: {
-                    search: "<i class='fas fa-search'></i>",
-                    searchPlaceholder: "Search..."
+                language: { processing: '<div class="stat-icon"><i class="fas fa-spinner fa-spin"></i> Loading...</div>' }
+            });
+
+            // Verifications Table
+            $('#verificationsTable').DataTable({
+                destroy: true,
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: window.location.href,
+                    type: 'POST',
+                    data: function(d) {
+                        d.ajax_action = 'get_verifications_json';
+                        d.filter_type = 'all';
+                    }
+                },
+                columns: [
+                    { data: 'id_display', render: function(data, type, row) { return data || row.id; } },
+                    { data: 'name' },
+                    { data: 'panchayat' },
+                    { data: 'mobile' },
+                    { data: 'txn_id' },
+                    { data: 'status' },
+                    { data: 'action', orderable: false }
+                ],
+                responsive: true,
+                pageLength: 25,
+                order: [[0, 'desc']],
+                language: { processing: '<div class="stat-icon"><i class="fas fa-spinner fa-spin"></i> Loading...</div>' }
+            });
+
+            // Global search functionality
+            $('#globalSearch').on('keyup', function() {
+                if ($.fn.DataTable.isDataTable('#candidatesDataTable')) {
+                    $('#candidatesDataTable').DataTable().search(this.value).draw();
                 }
             });
-            
-            // Global search functionality for the server-side candidates table
-            $('#globalSearch').on('keyup', function() {
-                $('#candidatesDataTable').DataTable().search(this.value).draw();
-            });
         });
+
+        // Quick Verification Logic
+        let searchTimeout;
+        function searchByPhone(phone) {
+            clearTimeout(searchTimeout);
+            const select = document.getElementById('verifyCandidateSelect');
+            if (phone.length < 3) {
+                select.innerHTML = '<option value="">Type at least 3 digits...</option>';
+                return;
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                const formData = new URLSearchParams();
+                formData.append('ajax_action', 'search_candidates_by_phone');
+                formData.append('phone', phone);
+                
+                try {
+                    const response = await fetch(window.location.href, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (data.success) {
+                        if (data.candidates.length === 0) {
+                            select.innerHTML = '<option value="">No candidates found</option>';
+                        } else {
+                            select.innerHTML = '<option value="">Select Candidate</option>';
+                            data.candidates.forEach(c => {
+                                const status = c.transaction_id ? '(Verified)' : '(Pending)';
+                                select.innerHTML += `<option value="${c.id}" data-txn="${c.transaction_id || ''}">${c.candidate_name_en} - ${c.mobile_number} ${status}</option>`;
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Search error:', e);
+                }
+            }, 300);
+        }
+
+        function selectCandidateForTxn(candidateId) {
+            if (!candidateId) return;
+            const select = document.getElementById('verifyCandidateSelect');
+            const option = select.options[select.selectedIndex];
+            const txn = option.dataset.txn;
+            openTransactionModal(candidateId, txn);
+        }
 
         function showPage(page) {
             document.querySelectorAll('.page-content').forEach(el => el.classList.remove('active'));
@@ -1582,10 +1891,16 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         }
 
         // Refresh Confirmation Logic
-        const showRefreshModal = () => document.getElementById('refreshConfirmModal').classList.add('active');
-        const closeRefreshModal = () => document.getElementById('refreshConfirmModal').classList.remove('active');
-        const executeRefresh = () => window.location.href = 'logout.php';
-        const triggerRefresh = showRefreshModal;
+        function showRefreshModal() {
+            document.getElementById('refreshConfirmModal').classList.add('active');
+        }
+        function closeRefreshModal() {
+            document.getElementById('refreshConfirmModal').classList.remove('active');
+        }
+        function executeRefresh() {
+            window.onbeforeunload = null; // Remove the standard browser alert to allow script refresh
+            window.location.href = 'logout.php';
+        }
 
         // Intercept F5 and Ctrl+R / Cmd+R
         window.addEventListener('keydown', function(e) {
@@ -1595,11 +1910,10 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             }
         });
 
-        // Browser Refresh Guard (Native prompt)
+        // Browser Refresh Guard (Native prompt) - Only show if truly leaving
         window.onbeforeunload = function(e) {
-            const msg = "Unsaved data will be lost and your session will close.";
-            e.returnValue = msg;
-            return msg;
+            // Only prompt if not going through our executeRefresh
+            return "Your current session will be closed. Are you sure?";
         };
 
         // --- Original Methods ---
@@ -1963,6 +2277,7 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                 const blockSelect = document.getElementById('block');
                 if (blockSelect) blockSelect.innerHTML = '<option value="">Select Block</option>';
             }
+            updateLocationCandidates();
         });
 
         document.getElementById('block')?.addEventListener('change', function() {
@@ -1975,8 +2290,70 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
             
             if (currentBlockId && hasPanchayat && document.getElementById('panchayatContainer').style.display !== 'none') {
                 loadPanchayats();
+            } else if (currentBlockId) {
+                // If it's a block level post with no panchayat, update list now
+                updateLocationCandidates();
+            } else {
+                const panchayatSelect = document.getElementById('panchayat');
+                if (panchayatSelect) panchayatSelect.innerHTML = '<option value="">Select Panchayat</option>';
             }
         });
+
+        document.getElementById('panchayat')?.addEventListener('change', updateLocationCandidates);
+
+        async function updateLocationCandidates() {
+            const districtId = document.getElementById('district').value;
+            const blockId = document.getElementById('block')?.value || 0;
+            const panchayatId = document.getElementById('panchayat')?.value || 0;
+            const container = document.getElementById('existingCandidatesCard');
+            const list = document.getElementById('existingCandidatesList');
+            
+            // Only show if panchayat is selected (or if it's a higher level post that doesn't need panchayat)
+            const panchayatContainer = document.getElementById('panchayatContainer');
+            const blockContainer = document.getElementById('blockContainer');
+            
+            const needsPanchayat = panchayatContainer && panchayatContainer.style.display !== 'none';
+            const needsBlock = blockContainer && blockContainer.style.display !== 'none';
+
+            if (!districtId || (needsBlock && !blockId) || (needsPanchayat && !panchayatId)) {
+                container.classList.remove('active');
+                return;
+            }
+            
+            list.innerHTML = '<div style="color: var(--gray); font-size: 0.9em;"><i class="fas fa-spinner fa-spin"></i> Checking existing registrations...</div>';
+            container.classList.add('active');
+            
+            const formData = new URLSearchParams();
+            formData.append('ajax_action', 'get_location_candidates');
+            formData.append('district_id', districtId);
+            formData.append('block_id', blockId);
+            formData.append('panchayat_id', panchayatId);
+            
+            try {
+                const response = await fetch(window.location.href, { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.candidates.length === 0) {
+                        list.innerHTML = '<div class="no-candidates-msg"><i class="fas fa-check-circle"></i> Available - No candidates registered here yet.</div>';
+                    } else {
+                        list.innerHTML = '';
+                        data.candidates.forEach(c => {
+                            const card = document.createElement('div');
+                            card.className = 'candidate-mini-card';
+                            card.innerHTML = `
+                                <span class="candidate-mini-name">${c.candidate_name_en}</span>
+                                <span class="candidate-mini-mobile"><i class="fas fa-phone-alt"></i> ${c.mobile_number}</span>
+                            `;
+                            list.appendChild(card);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching location candidates:', error);
+                list.innerHTML = '<div style="color: var(--danger);">Error loading data</div>';
+            }
+        }
 
         document.getElementById('candidateForm')?.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -2026,8 +2403,10 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
         async function saveTransactionId() {
             const candidateId = document.getElementById('txnCandidateId').value;
             const txnId = document.getElementById('txnId').value.trim();
+            const btn = event.currentTarget;
             if (!txnId) { alert('Please enter Transaction ID'); return; }
             
+            setButtonLoading(btn, true);
             const formData = new URLSearchParams();
             formData.append('ajax_action', 'save_transaction_id');
             formData.append('candidate_id', candidateId);
@@ -2045,17 +2424,27 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                     return;
                 }
                 const result = await response.json();
-                if (result.success) { location.reload(); }
+                if (result.success) { 
+                    alert('Transaction ID saved!');
+                    document.getElementById('transactionModal').classList.remove('active');
+                    // Refresh both tables
+                    $('#candidatesDataTable').DataTable().ajax.reload(null, false);
+                    $('#verificationsTable').DataTable().ajax.reload(null, false);
+                }
                 else alert(result.message);
             } catch (error) {
                 alert('Error saving transaction ID');
+            } finally {
+                setButtonLoading(btn, false);
             }
         }
 
         async function deleteTransactionId() {
             if (!confirm('Remove Transaction ID? Candidate will become pending.')) return;
             const candidateId = document.getElementById('txnCandidateId').value;
+            const btn = event.currentTarget;
             
+            setButtonLoading(btn, true);
             const formData = new URLSearchParams();
             formData.append('ajax_action', 'delete_transaction_id');
             formData.append('candidate_id', candidateId);
@@ -2072,10 +2461,18 @@ $pendingCount = count(array_filter($allCandidates, function($c) { return empty($
                     return;
                 }
                 const result = await response.json();
-                if (result.success) location.reload();
+                if (result.success) {
+                    alert('Transaction ID removed!');
+                    document.getElementById('transactionModal').classList.remove('active');
+                    // Refresh both tables
+                    $('#candidatesDataTable').DataTable().ajax.reload(null, false);
+                    $('#verificationsTable').DataTable().ajax.reload(null, false);
+                }
                 else alert(result.message);
             } catch (error) {
                 alert('Error deleting transaction ID');
+            } finally {
+                setButtonLoading(btn, false);
             }
         }
 
